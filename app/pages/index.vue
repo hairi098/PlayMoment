@@ -16,7 +16,7 @@
             dan siap dibagikan dalam hitungan menit.
           </p>
           <div class="hero-actions">
-            <button class="btn-login" @click="$emit('login')">
+            <button class="btn-primary" @click="handleLoginClick">
               Login Sekarang
               <svg
                 width="16"
@@ -481,9 +481,21 @@
 <script setup>
 import { ref } from "vue";
 import { getMarketingPakets, formatRupiahNumber, buildCheckoutQuery } from "~/config/paket";
-defineEmits(["login"]);
+import { useAccountStore } from "~/stores/useAccountStore";
 
+const accountStore = useAccountStore();
 const router = useRouter();
+
+function handleLoginClick() {
+  const user = accountStore.currentUser;
+  if (user?.role === "admin") {
+    navigateTo("/admin/dashboard");
+  } else if (user?.role === "customer") {
+    navigateTo("/dashboard");
+  } else {
+    navigateTo("/login");
+  }
+}
 
 const goToTema = () => {
   router.push("/tema");
