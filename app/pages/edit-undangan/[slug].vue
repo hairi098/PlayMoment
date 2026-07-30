@@ -5075,7 +5075,7 @@ const shortcutMenus = computed(() => [
 // key harus sama dengan key di DEFAULT_SECTIONS di store
 const sectionIcons = {
   opening: { img: "/icons/sections/cover.png", width: "38px" },
-  mempelai: { img: "/icons/sections/mempelai.png", width: "80px" },
+  mempelai: { img: "/icons/sections/mempelai.png", width: "38px" },
   quotes: { img: "/icons/sections/quotes.png", width: "36px" },
   acara: { img: "/icons/sections/acara.png", width: "34px" },
   galeri: { img: "/icons/sections/galeri.png", width: "36px" },
@@ -6878,7 +6878,7 @@ async function simpanPengaturan() {
   align-items: center;
   gap: 12px;
   padding: 14px 16px;
-  background: #f8fafc;
+  background: white;
   border-radius: 12px;
   margin-bottom: 18px;
   border: 1px solid #edf2f7;
