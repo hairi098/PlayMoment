@@ -136,8 +136,8 @@
         <!-- Status Undangan -->
         <div class="ep-status-card">
           <span class="ep-status-label">Status Undangan</span>
-          <span class="ep-badge-aktif" v-if="store.undanganAktif">Aktif</span>
-          <span class="ep-badge-nonaktif" v-else>Nonaktif</span>
+          <span style="margin-left:8px;" class="ep-badge-aktif" v-if="store.undanganAktif">Aktif</span>
+          <span style="margin-left:8px;" class="ep-badge-nonaktif" v-else>Nonaktif</span>
           <button
             class="ep-toggle"
             :class="{ 'ep-toggle-on': store.undanganAktif }"
@@ -977,7 +977,7 @@
             "
           >
             <div>
-              <span class="modal-row-label">Tampilkan Section</span>
+              <span class="modal-row-label">Section</span>
               <span
                 class="ep-badge-aktif"
                 style="margin-left: 8px"
@@ -1011,7 +1011,14 @@
 
           <!-- Header info section -->
           <div class="sec-modal-header">
+            <img
+              v-if="sectionIcons[activeSec.key]?.img"
+              :src="sectionIcons[activeSec.key].img"
+              :alt="activeSec.name"
+              :style="{ width: sectionIcons[activeSec.key].width || '38px', height: 'auto', objectFit: 'contain' }"
+            />
             <span
+              v-else
               class="sec-modal-ico"
               v-html="activeSec.iconSvg"
               :style="{ color: activeSec.color }"
