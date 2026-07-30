@@ -3449,7 +3449,9 @@ const temaComponent = computed(
 // ── Modal UI config (Nuxt UI)
 const modalUi = {
   content:
-    "w-[calc(100vw-32px)] max-w-[450px] mx-auto rounded-2xl !bg-white !text-slate-900 ring-1 ring-slate-200",
+    "w-[calc(100vw-32px)] max-w-[450px] mx-auto my-auto max-h-[85vh] rounded-2xl !bg-white !text-slate-900 ring-1 ring-slate-200",
+  title: "!text-[#1a2e45] dark:!text-[#1a2e45]",
+  description: "!text-slate-500 dark:!text-slate-500",
 };
 
 // ── Modal booleans
@@ -6142,6 +6144,12 @@ async function simpanPengaturan() {
   color: #1a2e45 !important;
   overflow: hidden !important;
   box-shadow: 0 18px 48px rgba(26, 46, 69, 0.18) !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+:deep(.u-modal-body) {
+  overflow-y: auto !important;
 }
 
 :deep(.u-modal-header),
@@ -6902,14 +6910,18 @@ async function simpanPengaturan() {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
   padding: 12px 14px;
   background: #fff;
+  flex-wrap: wrap;
 }
 .sec-field-name {
   font-size: 13px;
   font-weight: 600;
   color: #374151;
-  flex: 1;
+  flex: 1 1 140px;
+  min-width: 0;
+  word-break: break-word;
 }
 .sec-field-actions {
   display: flex;
@@ -8200,6 +8212,15 @@ async function simpanPengaturan() {
   .modal-body-pad,
   .gal-modal-body {
     padding: 6px 18px 12px;
+  }
+
+  .sec-modal-header {
+    padding: 12px;
+    gap: 10px;
+  }
+
+  .sec-field-row {
+    padding: 10px 12px;
   }
 
   .media-modal-body {
