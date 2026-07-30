@@ -461,7 +461,7 @@
     ══════════════════════════════════════════════ -->
 
     <!-- ── MODAL: RSVP Settings ── -->
-    <UModal v-model:open="rsvpOpen" title="RSVP Settings" :ui="modalUi">
+    <UModal :portal="false" v-model:open="rsvpOpen" title="RSVP Settings" :ui="modalUi">
       <template #body>
         <div class="modal-body-pad">
           <!-- Toggle Fitur RSVP -->
@@ -700,7 +700,7 @@
     </UModal>
 
     <!-- ── MODAL: Pengaturan ── -->
-    <UModal v-model:open="pengaturanOpen" title="Pengaturan" :ui="modalUi">
+    <UModal :portal="false" v-model:open="pengaturanOpen" title="Pengaturan" :ui="modalUi">
       <template #body>
         <div class="modal-body-pad">
           <p class="modal-section-label" style="margin-bottom: 12px">
@@ -822,7 +822,7 @@
     </UModal>
 
     <!-- ── MODAL: Music ── -->
-    <UModal v-model:open="musikOpen" title="Music" :ui="modalUi">
+    <UModal :portal="false" v-model:open="musikOpen" title="Music" :ui="modalUi">
       <template #body>
         <div class="modal-body-pad">
           <!-- Toggle Fitur Music -->
@@ -960,6 +960,7 @@
 
     <!-- ── MODAL: Edit Section ── -->
     <UModal
+      :portal="false"
       v-model:open="sectionEditOpen"
       :title="activeSec?.name || 'Edit Section'"
       :ui="modalUi"
@@ -1592,6 +1593,7 @@
 
     <!-- ── MODAL: Edit Field Text ── -->
     <UModal
+      :portal="false"
       v-model:open="fieldEditOpen"
       :title="activeField?.label || 'Edit'"
       :ui="modalUi"
@@ -1621,7 +1623,7 @@
     </UModal>
 
     <!-- ══ MODAL: Gallery ══ -->
-    <UModal v-model:open="galleryModalOpen" title="Gallery" :ui="modalUi">
+    <UModal :portal="false" v-model:open="galleryModalOpen" title="Gallery" :ui="modalUi">
       <template #body>
         <div class="gal-modal-body">
           <!-- Toggle aktif -->
@@ -2214,6 +2216,7 @@
 
     <!-- ══ MODAL: Pilih Layout Halaman ══ -->
     <UModal
+      :portal="false"
       v-model:open="layoutModalOpen"
       title="Pilih Layout Halaman"
       :ui="modalUi"
@@ -2317,7 +2320,7 @@
     </UModal>
 
     <!-- ══ MODAL: Media upload (dari tombol Upload ke Media) ══ -->
-    <UModal v-model:open="mediaUploadOnly" title="Media" :ui="modalUi">
+    <UModal :portal="false" v-model:open="mediaUploadOnly" title="Media" :ui="modalUi">
       <template #body>
         <div class="media-modal-body">
           <div class="media-tabs">
@@ -2394,7 +2397,7 @@
     </UModal>
 
     <!-- ══ MODAL: Media (untuk Gallery slot) ══ -->
-    <UModal v-model:open="galleryMediaOpen" title="Pilih Media" :ui="modalUi">
+    <UModal :portal="false" v-model:open="galleryMediaOpen" title="Pilih Media" :ui="modalUi">
       <template #body>
         <div class="media-modal-body">
           <div class="media-tabs">
@@ -2612,7 +2615,7 @@
     </UModal>
 
     <!-- ── MODAL: Media (Gallery + Assets) ── -->
-    <UModal v-model:open="imageModalOpen" title="Media" :ui="modalUi">
+    <UModal :portal="false" v-model:open="imageModalOpen" title="Media" :ui="modalUi">
       <template #body>
         <div class="media-modal-body">
           <!-- Tab switcher -->
@@ -2805,7 +2808,7 @@
     </UModal>
 
     <!-- ── MODAL: Tutorial ── -->
-    <UModal v-model:open="tutorialOpen" title="Tutorial" :ui="modalUi">
+    <UModal :portal="false" v-model:open="tutorialOpen" title="Tutorial" :ui="modalUi">
       <template #body>
         <div class="modal-body-pad">
           <div class="tutorial-list">
@@ -2830,6 +2833,7 @@
 
     <!-- ── MODAL: Perpanjang ── -->
     <UModal
+      :portal="false"
       v-model:open="perpanjangOpen"
       title="Perpanjang Undangan"
       :ui="modalUi"
@@ -2958,7 +2962,7 @@
     </UModal>
 
     <!-- ── MODAL: Kirim Undangan ── -->
-    <UModal v-model:open="kirimOpen" title="Kirim Undangan" :ui="{ content: 'w-[calc(100vw-32px)] max-w-[550px] mx-auto rounded-2xl !bg-white !text-slate-900 ring-1 ring-slate-200' }">
+    <UModal :portal="false" v-model:open="kirimOpen" title="Kirim Undangan" :ui="{ content: 'w-[calc(100vw-32px)] max-w-[550px] mx-auto rounded-2xl !bg-white !text-slate-900 ring-1 ring-slate-200' }">
       <template #body>
         <div class="modal-body-pad kirim-modal-scroll" style="max-height: min(70dvh, 600px); overflow-y: auto;">
           <p class="kirim-subtitle" style="font-size: 13px; color: #6b7280; margin: 0 0 14px; font-weight: 600;">
@@ -3138,7 +3142,7 @@
     </UModal>
 
     <!-- ── MODAL: Tambah Tamu (Nested) ── -->
-    <UModal v-model:open="tamuModalOpen" title="Tambah Tamu" :ui="modalUi">
+    <UModal :portal="false" v-model:open="tamuModalOpen" title="Tambah Tamu" :ui="modalUi">
       <template #body>
         <div class="modal-body-pad" style="max-height: min(60dvh, 500px); overflow-y: auto;">
           <p class="kirim-modal-desc" style="font-size: 12px; color: #6b7280; line-height: 1.5; margin: 0 0 14px;">
@@ -3185,7 +3189,7 @@
     </UModal>
 
     <!-- ── MODAL: Edit Template Pesan (Nested) ── -->
-    <UModal v-model:open="templateModalOpen" title="Edit Template Pesan" :ui="modalUi">
+    <UModal :portal="false" v-model:open="templateModalOpen" title="Edit Template Pesan" :ui="modalUi">
       <template #body>
         <div class="modal-body-pad" style="max-height: min(65dvh, 500px); overflow-y: auto;">
           <p class="kirim-hint" style="font-size: 12px; color: #6b7280; margin: 0 0 8px;">
@@ -3240,6 +3244,7 @@ import { hydrateUndanganStoreFromEditor } from "~/composables/useInvitationEdito
 import { supabase } from "~/lib/supabase";
 import { useCustomerIdentity } from "~/composables/useCustomerIdentity";
 import { useKirimUndangan } from "~/composables/useKirimUndangan";
+import { useColorMode } from "#imports";
 
 const kirimOpen = ref(false);
 const {
@@ -3283,6 +3288,12 @@ const {
 // ── Store & Router
 const store = useUndanganStore();
 const accountStore = useAccountStore();
+
+// ── FIX: paksa mode terang, jangan ikut dark mode sistem/browser
+// (mencegah UButton, UModal, native <select>/<input type="color">, scrollbar
+// dll otomatis ganti tampilan pas HP/browser user diset dark mode)
+const colorMode = useColorMode();
+colorMode.preference = "light";
 
 // ── Link WA admin: request hapus watermark logo (dipakai customer)
 const waHapusLogoUrl = computed(() => {
@@ -5444,6 +5455,7 @@ async function simpanPengaturan() {
   max-width: 480px;
   margin: 0 auto;
   position: relative;
+  transform: translateZ(0); /* biar jadi containing block utk child position:fixed (modal :portal="false") */
 }
 
 /* ── TOPBAR ── */
@@ -6135,7 +6147,7 @@ async function simpanPengaturan() {
    MODAL STYLES
 ════════════════════ */
 .modal-body-pad {
-  padding: 6px 24px 12px;
+  padding: 6px 16px 12px;
 }
 
 /* Force light modal regardless system theme */
@@ -6146,6 +6158,15 @@ async function simpanPengaturan() {
   box-shadow: 0 18px 48px rgba(26, 46, 69, 0.18) !important;
   display: flex !important;
   flex-direction: column !important;
+  /* ── Paksa center presisi di tengah layar (override posisi bawaan Nuxt UI) ── */
+  position: fixed !important;
+  top: 50% !important;
+  left: 50% !important;
+  right: auto !important;
+  bottom: auto !important;
+  margin: 0 !important;
+  transform: translate(-50%, -50%) !important;
+  max-height: 85dvh !important;
 }
 
 :deep(.u-modal-body) {
@@ -7624,7 +7645,7 @@ async function simpanPengaturan() {
 
 /* ══ GALLERY MODAL ══ */
 .gal-modal-body {
-  padding: 6px 24px 12px;
+  padding: 6px 16px 12px;
 }
 
 .gal-feature-row {
@@ -8211,7 +8232,7 @@ async function simpanPengaturan() {
 
   .modal-body-pad,
   .gal-modal-body {
-    padding: 6px 18px 12px;
+    padding: 6px 12px 12px;
   }
 
   .sec-modal-header {
@@ -8650,5 +8671,12 @@ async function simpanPengaturan() {
   color: #991b1b;
   border-color: #fca5a5;
   box-shadow: 0 8px 30px rgba(153, 27, 27, 0.12);
+}
+</style>
+
+<!-- FIX DARK MODE: tidak scoped, biar berlaku ke :root/html juga -->
+<style>
+:root {
+  color-scheme: light only;
 }
 </style>
