@@ -16,7 +16,7 @@
             dan siap dibagikan dalam hitungan menit.
           </p>
           <div class="hero-actions">
-            <button class="btn-primary" @click="$emit('login')">
+            <button class="btn-login" @click="$emit('login')">
               Login Sekarang
               <svg
                 width="16"
