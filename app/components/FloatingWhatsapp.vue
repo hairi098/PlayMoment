@@ -47,3 +47,10 @@
   }
 }
 </style>
+
+<style>
+/* Sembunyikan floating WA saat filter modal terbuka */
+body.filter-open .floating-wa {
+  display: none !important;
+}
+</style>
