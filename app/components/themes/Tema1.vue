@@ -9,18 +9,35 @@ const accountStore = useAccountStore();
 
 // ── SOUND EFFECTS ──
 // Suara pop/bubble ala game
-function createAudioContext() {
+// PENTING (fix mobile): AudioContext baru di iOS Safari & Android Chrome
+// defaultnya "suspended" (autoplay policy), harus di-resume() dulu tiap
+// mau play, dan sebaiknya di-reuse (bukan bikin+close berulang-ulang)
+// karena browser mobile membatasi jumlah AudioContext yang boleh dibuat.
+let sharedAudioCtx: AudioContext | null = null;
+function getAudioContext() {
   try {
-    return new (window.AudioContext || (window as any).webkitAudioContext)();
+    if (!sharedAudioCtx) {
+      sharedAudioCtx = new (window.AudioContext ||
+        (window as any).webkitAudioContext)();
+    }
+    if (sharedAudioCtx.state === "suspended") {
+      sharedAudioCtx.resume().catch(() => {});
+    }
+    return sharedAudioCtx;
   } catch {
     return null;
   }
+}
+// Dipanggil sekali di gesture pertama (misal onAfterOpen) supaya
+// AudioContext ke-unlock lebih awal di mobile
+function unlockAudioContext() {
+  getAudioContext();
 }
 
 // Suara klik → pop pendek seperti gelembung meletup
 function playClickSound() {
   if (!store.soundEffectAktif) return;
-  const ctx = createAudioContext();
+  const ctx = getAudioContext();
   if (!ctx) return;
 
   const osc = ctx.createOscillator();
@@ -45,13 +62,12 @@ function playClickSound() {
 
   osc.start(ctx.currentTime);
   osc.stop(ctx.currentTime + 0.13);
-  osc.onended = () => ctx.close();
 }
 
 // Suara hover → pop kecil ringan
 function playHoverSound() {
   if (!store.soundEffectAktif) return;
-  const ctx = createAudioContext();
+  const ctx = getAudioContext();
   if (!ctx) return;
 
   const osc = ctx.createOscillator();
@@ -76,13 +92,12 @@ function playHoverSound() {
 
   osc.start(ctx.currentTime);
   osc.stop(ctx.currentTime + 0.08);
-  osc.onended = () => ctx.close();
 }
 
 // Suara buka undangan → 3 pop naik berurutan (ala game level up)
 function playOpenSound() {
   if (!store.soundEffectAktif) return;
-  const ctx = createAudioContext();
+  const ctx = getAudioContext();
   if (!ctx) return;
 
   const pops = [320, 480, 640]; // frekuensi tiap pop, makin tinggi
@@ -122,14 +137,13 @@ function playOpenSound() {
 
     osc.start(ctx.currentTime + delay);
     osc.stop(ctx.currentTime + delay + 0.15);
-    if (i === pops.length - 1) osc.onended = () => ctx.close();
   });
 }
 
 // Suara ketik → tick ringan saat input karakter
 function playTypingSound() {
   if (!store.soundTypingAktif) return;
-  const ctx = createAudioContext();
+  const ctx = getAudioContext();
   if (!ctx) return;
 
   const osc = ctx.createOscillator();
@@ -148,7 +162,6 @@ function playTypingSound() {
 
   osc.start(ctx.currentTime);
   osc.stop(ctx.currentTime + 0.045);
-  osc.onended = () => ctx.close();
 }
 
 const isOpen = ref(false);
@@ -199,6 +212,7 @@ watch(musicIsOn, (on) => {
 });
 
 const openInvitation = () => {
+  unlockAudioContext();
   playOpenSound();
   if (bgAudio && musicIsOn.value) {
     bgAudio
@@ -805,9 +819,11 @@ const onAfterOpen = () => {
   }, 6000);
   setTimeout(() => {
     showLightNotif.value = true;
+    lightIsOn.value = true;
   }, 600);
   setTimeout(() => {
     showLightNotif.value = false;
+    lightIsOn.value = false;
   }, 6000);
 };
 
@@ -4082,25 +4098,15 @@ function isVisible(sectionKey: string, fieldKey: string): boolean {
 .rsvp-select {
   display: block;
   width: 100%;
-  padding: 9px 36px 9px 12px;
+  padding: 10px 36px 10px 13px;
   font-size: 14px;
   font-family: inherit;
   color: var(--c-text, #1a2e45);
   background-color: #fff;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%231a2e45' stroke-width='1.8' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right 12px center;
-  border: 1.5px solid var(--c-border, #1a2e45);
-  border-radius: 8px;
-  appearance: none;
-  -webkit-appearance: none;
-  cursor: pointer;
-  outline: none;
-  transition: border-color 0.15s;
-}
-.rsvp-select:focus {
-  border-color: var(--c-tombol, #7c3aed);
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
+  background-position: right 13px center;
+  -webkit-tap-highlight-color: transparent;
 }
 .rsvp-select:disabled {
   background-color: #f3f4f6;
@@ -4108,15 +4114,66 @@ function isVisible(sectionKey: string, fieldKey: string): boolean {
   opacity: 0.7;
 }
 
-/* Force modal inputs & textareas to use custom border and focus shadow */
+/* ══ Input/select/textarea RSVP — border & efek konsisten dgn tema ══ */
+/* Reset ring/shadow bawaan Nuxt UI dulu supaya style kita yang kepakai */
 .cmodal-box input,
-.cmodal-box textarea {
-  border-color: var(--c-border, #1a2e45) !important;
+.cmodal-box textarea,
+.cmodal-box .rsvp-select {
+  -webkit-tap-highlight-color: transparent;
+  border: 1.5px solid var(--c-border, #1a2e45) !important;
+  border-radius: 10px !important;
+  background-color: #fff !important;
+  background-image: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.015) 0%,
+    rgba(255, 255, 255, 0) 40%
+  ) !important;
+  box-shadow:
+    inset 0 1.5px 3px rgba(26, 46, 69, 0.08),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.7),
+    0 1px 1px rgba(26, 46, 69, 0.04) !important;
+  outline: none !important;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.12s ease !important;
 }
+/* Select punya background-image sendiri (panah dropdown), jangan ditimpa */
+.cmodal-box .rsvp-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%231a2e45' stroke-width='1.8' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 13px center !important;
+  cursor: pointer;
+}
+
+/* Hover ringan — kasih hint warna tema tanpa ganggu */
+.cmodal-box input:hover,
+.cmodal-box textarea:hover,
+.cmodal-box .rsvp-select:hover {
+  border-color: color-mix(
+    in srgb,
+    var(--c-tombol, #7c3aed) 45%,
+    var(--c-border, #1a2e45)
+  ) !important;
+}
+
+/* Fokus/tap — warna & glow konsisten pakai warna tombol tema (bukan biru default) */
 .cmodal-box input:focus,
-.cmodal-box textarea:focus {
+.cmodal-box textarea:focus,
+.cmodal-box input:focus-visible,
+.cmodal-box textarea:focus-visible,
+.cmodal-box .rsvp-select:focus,
+.cmodal-box .rsvp-select:focus-visible {
   border-color: var(--c-tombol, #7c3aed) !important;
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12) !important;
+  box-shadow:
+    inset 0 1.5px 3px rgba(26, 46, 69, 0.06),
+    0 0 0 3px
+      color-mix(in srgb, var(--c-tombol, #7c3aed) 18%, transparent) !important;
+}
+
+/* Textarea: pegangan resize biar nyatu sama tema, bukan abu-abu polos */
+.cmodal-box textarea {
+  resize: vertical;
 }
 
 /* ══ COUNTDOWN ══ */
