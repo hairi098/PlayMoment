@@ -17,8 +17,8 @@
 <style scoped>
 .floating-wa {
   position: fixed;
-  bottom: 80px;
-  right: 24px;
+  bottom: 90px; /* Mobile */
+  right: 18px;
   z-index: 999;
   width: 52px;
   height: 52px;
@@ -34,8 +34,16 @@
     box-shadow 0.2s;
   text-decoration: none;
 }
+
 .floating-wa:hover {
   transform: scale(1.1) translateY(-2px);
   box-shadow: 0 8px 28px rgba(37, 211, 102, 0.5);
+}
+
+/* Desktop */
+@media (min-width: 768px) {
+  .floating-wa {
+    bottom: 30px;
+  }
 }
 </style>
