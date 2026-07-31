@@ -4116,8 +4116,8 @@ function isVisible(sectionKey: string, fieldKey: string): boolean {
 
 /* ══ Input/select/textarea RSVP — border & efek konsisten dgn tema ══ */
 /* Reset ring/shadow bawaan Nuxt UI dulu supaya style kita yang kepakai */
-.cmodal-box input,
-.cmodal-box textarea,
+.cmodal-box :deep(input),
+.cmodal-box :deep(textarea),
 .cmodal-box .rsvp-select {
   -webkit-tap-highlight-color: transparent;
   border: 1.5px solid var(--c-border, #1a2e45) !important;
@@ -4147,8 +4147,8 @@ function isVisible(sectionKey: string, fieldKey: string): boolean {
 }
 
 /* Hover ringan — kasih hint warna tema tanpa ganggu */
-.cmodal-box input:hover,
-.cmodal-box textarea:hover,
+.cmodal-box :deep(input:hover),
+.cmodal-box :deep(textarea:hover),
 .cmodal-box .rsvp-select:hover {
   border-color: color-mix(
     in srgb,
@@ -4158,10 +4158,10 @@ function isVisible(sectionKey: string, fieldKey: string): boolean {
 }
 
 /* Fokus/tap — warna & glow konsisten pakai warna tombol tema (bukan biru default) */
-.cmodal-box input:focus,
-.cmodal-box textarea:focus,
-.cmodal-box input:focus-visible,
-.cmodal-box textarea:focus-visible,
+.cmodal-box :deep(input:focus),
+.cmodal-box :deep(textarea:focus),
+.cmodal-box :deep(input:focus-visible),
+.cmodal-box :deep(textarea:focus-visible),
 .cmodal-box .rsvp-select:focus,
 .cmodal-box .rsvp-select:focus-visible {
   border-color: var(--c-tombol, #7c3aed) !important;
@@ -4172,7 +4172,7 @@ function isVisible(sectionKey: string, fieldKey: string): boolean {
 }
 
 /* Textarea: pegangan resize biar nyatu sama tema, bukan abu-abu polos */
-.cmodal-box textarea {
+.cmodal-box :deep(textarea) {
   resize: vertical;
 }
 
