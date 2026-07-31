@@ -1438,10 +1438,10 @@ const handleDaftar = () => alert("Daftar & Coba Gratis!");
 
 .modal-panel {
   background: #fff;
-  border-radius: 20px;
+  border-radius: 16px;
   width: 100%;
-  max-width: 600px;
-  max-height: calc(100vh - 48px);
+  max-width: 480px;
+  max-height: min(85dvh, calc(100dvh - 120px));
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -1466,7 +1466,7 @@ const handleDaftar = () => alert("Daftar & Coba Gratis!");
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20px 20px 16px;
+  padding: 14px 16px 12px;
   border-bottom: 1px solid #f0f4f8;
   flex-shrink: 0;
 }
@@ -1478,7 +1478,7 @@ const handleDaftar = () => alert("Daftar & Coba Gratis!");
 }
 
 .modal-title {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 800;
   color: #1a2e45;
 }
@@ -1516,7 +1516,7 @@ const handleDaftar = () => alert("Daftar & Coba Gratis!");
 .modal-body {
   flex: 1;
   overflow-y: auto;
-  padding: 0 20px;
+  padding: 0 16px;
   -webkit-overflow-scrolling: touch;
 }
 .modal-body::-webkit-scrollbar {
@@ -1531,7 +1531,7 @@ const handleDaftar = () => alert("Daftar & Coba Gratis!");
 }
 
 .filter-section {
-  padding: 18px 0;
+  padding: 12px 0;
   border-bottom: 1px solid #f0f4f8;
 }
 .filter-section:last-child {
@@ -1542,17 +1542,17 @@ const handleDaftar = () => alert("Daftar & Coba Gratis!");
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 700;
   color: #4a5568;
   text-transform: uppercase;
   letter-spacing: 1px;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .filter-tags {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
 }
 
@@ -1561,8 +1561,8 @@ const handleDaftar = () => alert("Daftar & Coba Gratis!");
   border: 1.5px solid #e2e8f0;
   color: #4a5568;
   border-radius: 50px;
-  padding: 7px 16px;
-  font-size: 13px;
+  padding: 5px 12px;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.18s;
@@ -1579,8 +1579,8 @@ const handleDaftar = () => alert("Daftar & Coba Gratis!");
 
 .modal-footer {
   display: flex;
-  gap: 12px;
-  padding: 16px 20px 20px;
+  gap: 10px;
+  padding: 12px 16px;
   border-top: 1px solid #f0f4f8;
   flex-shrink: 0;
 }
@@ -1590,9 +1590,9 @@ const handleDaftar = () => alert("Daftar & Coba Gratis!");
   background: #f1f5f9;
   border: none;
   color: #4a5568;
-  border-radius: 12px;
-  padding: 14px;
-  font-size: 14px;
+  border-radius: 10px;
+  padding: 11px;
+  font-size: 13px;
   font-weight: 700;
   cursor: pointer;
   transition: background 0.2s;
@@ -1606,9 +1606,9 @@ const handleDaftar = () => alert("Daftar & Coba Gratis!");
   background: #7ecec4;
   border: none;
   color: #1a2e45;
-  border-radius: 12px;
-  padding: 14px;
-  font-size: 15px;
+  border-radius: 10px;
+  padding: 11px;
+  font-size: 13px;
   font-weight: 800;
   cursor: pointer;
   display: flex;
