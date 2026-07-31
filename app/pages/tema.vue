@@ -652,11 +652,13 @@ const openFilter = () => {
   tempColor.value = activeColor.value;
   showFilter.value = true;
   document.body.style.overflow = "hidden";
+  document.body.classList.add("filter-open");
 };
 
 const closeFilter = () => {
   showFilter.value = false;
   document.body.style.overflow = "";
+  document.body.classList.remove("filter-open");
 };
 
 const applyFilter = () => {
