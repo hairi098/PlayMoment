@@ -4638,11 +4638,8 @@ function isVisible(sectionKey: string, fieldKey: string): boolean {
   inset: auto !important;
   min-height: 100dvh;
   width: 100%;
-  max-width: 480px;
-  margin: 0 auto;
   background: #fff;
   overflow-x: hidden;
-  box-shadow: 0 0 60px rgba(0, 0, 0, 0.15);
 }
 
 .cover-wrap {
@@ -4665,7 +4662,9 @@ function isVisible(sectionKey: string, fieldKey: string): boolean {
   }
 }
 
-/* Tombol & bubble jadi mengambang relatif ke layar (bukan ke .drawer yang sudah dihapus) */
+/* Tombol & bubble fixed ke viewport — karena .invitation-root sekarang full-screen
+   (nggak dibatasi max-width lagi), posisi ini otomatis nempel ke tepi drawer/undangan,
+   bukan lagi ke tepi teal-background kayak sebelumnya */
 .right-btns,
 .hamburger-btn,
 .ucapan-wrap,
@@ -4765,9 +4764,4 @@ function isVisible(sectionKey: string, fieldKey: string): boolean {
   margin-top: 4px;
 }
 
-@media (min-width: 600px) and (max-aspect-ratio: 4/3) {
-  .invitation-root {
-    max-width: 480px;
-  }
-}
 </style>
