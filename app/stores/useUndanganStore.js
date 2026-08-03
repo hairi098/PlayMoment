@@ -109,6 +109,7 @@ const DEFAULT_SECTIONS = [
   { key: "rundown", name: "Rundown", color: "#6366f1" },
   { key: "dresscode", name: "Drescode", color: "#ec4899" },
   { key: "contact", name: "Contact", color: "#10b981" },
+  { key: "penutup", name: "Penutup", color: "#94a3b8" },
 ];
 
 // ─────────────────────────────────────────────

@@ -5086,6 +5086,7 @@ const sectionIcons = {
   rundown: { img: "/icons/sections/rundown.png", width: "32px" },
   dresscode: { img: "/icons/sections/dresscode.png", width: "36px" },
   contact: { img: "/icons/sections/contact.png", width: "32px" },
+  penutup: { img: "/icons/sections/penutup.png", width: "34px" },
 };
 
 const customColors = [

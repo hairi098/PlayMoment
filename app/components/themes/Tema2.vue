@@ -255,6 +255,13 @@ const template = ref({
   bg_mobile_url: "/themes/onepiece/bg-mobile.jpeg",
   assets: [
     {
+      key: "quotes",
+      Image_url: "/themes/onepiece/profile.png",
+      Width: "77%",
+      top: "35%",
+      left: "12%",
+    },
+    {
       key: "profile",
       Image_url: "/themes/onepiece/profile.png",
       Width: " 77%",
@@ -312,6 +319,13 @@ const template = ref({
     },
     {
       key: "rundown",
+      Image_url: "/themes/onepiece/salam.png",
+      Width: "40.5%",
+      top: "68%",
+      left: "2%",
+    },
+    {
+      key: "contact",
       Image_url: "/themes/onepiece/salam.png",
       Width: "40.5%",
       top: "68%",
@@ -795,9 +809,8 @@ const showLightNotif = ref(false);
 const showWelcomeBubble = ref(false);
 // Welcome modal
 const showWelcomeModal = ref(false);
-// Tampilkan menu panel & notif lampu setelah undangan dibuka
+// Tampilkan notif lampu setelah undangan dibuka (menu panel nggak lagi auto-muncul)
 const onAfterOpen = () => {
-  showMenuPanel.value = true;
   showWelcomeBubble.value = true;
   // Setelah 3.5 detik, sembunyikan welcome bubble → tampil ucapan tamu
   setTimeout(() => {
@@ -1088,8 +1101,8 @@ function isVisible(sectionKey: string, fieldKey: string): boolean {
 
       <!-- ══ MENU PANEL (quick nav ke section) ══ -->
       <Transition name="menu-slide">
-        <div v-if="showMenuPanel" class="menu-backdrop">
-          <div class="menu-panel" :style="{ '--c-tombol': store.customColors.tombol || '#7c3aed', '--c-efek': store.customColors.efek || '#f472b6', '--c-popup': store.customColors.popup || '#1a2e45' }">
+        <div v-if="showMenuPanel" class="menu-backdrop" @click="showMenuPanel = false">
+          <div class="menu-panel" @click.stop :style="{ '--c-tombol': store.customColors.tombol || '#7c3aed', '--c-efek': store.customColors.efek || '#f472b6', '--c-popup': store.customColors.popup || '#1a2e45' }">
             <div class="menu-panel-header" :style="{ background: store.customColors.popup || '#1a2e45' }">
               <span class="menu-panel-title">Selamat Datang 👋</span>
               <button class="menu-panel-close" @click="showMenuPanel = false; playClickSound();">✕</button>
@@ -1109,7 +1122,8 @@ function isVisible(sectionKey: string, fieldKey: string): boolean {
                   </div>
                   <div class="menu-card-info">
                     <div class="menu-card-title">
-                      {{ asset.key === 'profile' ? ((store.sectionContents as any).mempelai?.judulModal || 'Profil Mempelai')
+                      {{ asset.key === 'quotes' ? 'Quotes'
+                       : asset.key === 'profile' ? ((store.sectionContents as any).mempelai?.judulModal || 'Profil Mempelai')
                        : asset.key === 'gift' ? ((store.sectionContents as any).gift?.judul || 'Amplop Digital')
                        : asset.key === 'gallery' ? ((store.sectionContents as any).galeri?.judul || 'Gallery Foto')
                        : asset.key === 'rsvp' ? ((store.sectionContents as any).rsvp?.judul || 'RSVP & Ucapan')
@@ -1118,6 +1132,7 @@ function isVisible(sectionKey: string, fieldKey: string): boolean {
                        : asset.key === 'dresscode' ? ((store.sectionContents as any).dresscode?.judul || 'Dresscode')
                        : asset.key === 'maps' ? ((store.sectionContents as any).maps?.judul || 'Lokasi Acara')
                        : asset.key === 'rundown' ? ((store.sectionContents as any).rundown?.judul || 'Rundown Acara')
+                       : asset.key === 'contact' ? ((store.sectionContents as any).contact?.judul || 'Informasi Kontak')
                        : asset.key }}
                     </div>
                     <div class="menu-card-desc">
@@ -1140,54 +1155,6 @@ function isVisible(sectionKey: string, fieldKey: string): boolean {
                     <path d="m9 18 6-6-6-6" />
                   </svg>
                 </button>
-              </template>
-
-              <div v-if="store.musikAktif && store.undangan.musik && store.showMusikWatermark !== false" class="menu-music-section">
-                <p class="menu-section-label">Lagu Pernikahan</p>
-                <div class="menu-music-item">
-                  <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="flex-shrink:0;opacity:0.6">
-                    <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
-                  </svg>
-                  <span>{{ store.undangan.musik }}</span>
-                </div>
-              </div>
-
-              <template v-if="(store as any).showLogoWatermark !== false">
-                <div class="menu-social-section">
-                  <p class="menu-section-label">Hubungi &amp; Ikuti Kami</p>
-                  <div class="menu-social-row">
-                    <a :href="platformInfo.instagramUrl" target="_blank" rel="noopener noreferrer" class="menu-social-btn" @click="playClickSound()" @mouseenter="playHoverSound()">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                        <rect x="2" y="2" width="20" height="20" rx="5" />
-                        <circle cx="12" cy="12" r="4.2" />
-                        <circle cx="17.4" cy="6.6" r="1.1" fill="currentColor" stroke="none" />
-                      </svg>
-                      {{ platformInfo.instagram }}
-                    </a>
-                    <a :href="platformInfo.websiteUrl" target="_blank" rel="noopener noreferrer" class="menu-social-btn" @click="playClickSound()" @mouseenter="playHoverSound()">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                        <circle cx="12" cy="12" r="10" />
-                        <path d="M2 12h20" />
-                        <path d="M12 2c2.7 2.7 4.2 6.2 4.2 10s-1.5 7.3-4.2 10c-2.7-2.7-4.2-6.2-4.2-10S9.3 4.7 12 2z" />
-                      </svg>
-                      {{ platformInfo.website }}
-                    </a>
-                    <a :href="`https://wa.me/${platformInfo.whatsapp}`" target="_blank" rel="noopener noreferrer" class="menu-social-btn menu-social-btn--full" @click="playClickSound()" @mouseenter="playHoverSound()">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
-                        <path d="M12 0C5.373 0 0 5.373 0 12c0 2.122.553 4.113 1.522 5.842L.057 23.882l6.175-1.621A11.943 11.943 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.894a9.881 9.881 0 0 1-5.031-1.378l-.361-.215-3.736.98.998-3.648-.235-.374A9.847 9.847 0 0 1 2.105 12C2.105 6.526 6.526 2.105 12 2.105c5.473 0 9.894 4.421 9.894 9.895 0 5.473-4.421 9.894-9.894 9.894z"/>
-                      </svg>
-                      {{ platformInfo.phoneDisplay }}
-                    </a>
-                  </div>
-                </div>
-                <div class="menu-brand-footer">
-                  <span class="menu-brand-text">Dibuat dengan</span>
-                  <div class="menu-brand-logo-row">
-                    <img src="/playmoment/logo-teal.png" alt="PlayMoment" class="menu-brand-logo" />
-                    <span class="menu-brand-name">PlayMoment</span>
-                  </div>
-                </div>
               </template>
             </div>
           </div>
@@ -1777,7 +1744,11 @@ function isVisible(sectionKey: string, fieldKey: string): boolean {
         </section>
 
         <!-- ══ SALAM / PENUTUP ══ -->
-        <section id="sec-salam" class="inv-section inv-section--salam">
+        <section
+          id="sec-penutup"
+          class="inv-section inv-section--salam"
+          v-if="store.sectionStates['penutup']?.active !== false"
+        >
           <div class="salam-photo-wrap" v-if="salamMessage.image_url">
             <img :src="salamMessage.image_url" alt="foto pasangan" class="salam-photo" />
           </div>
@@ -1786,6 +1757,54 @@ function isVisible(sectionKey: string, fieldKey: string): boolean {
           <p class="salam-text">{{ salamMessage.penutup }}</p>
           <p class="salam-hormat">{{ salamMessage.hormat }}</p>
           <p class="salam-signature">{{ salamMessage.signature }}</p>
+
+          <div v-if="store.musikAktif && store.undangan.musik && store.showMusikWatermark !== false" class="menu-music-section">
+            <p class="menu-section-label">Lagu Pernikahan</p>
+            <div class="menu-music-item">
+              <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="flex-shrink:0;opacity:0.6">
+                <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
+              </svg>
+              <span>{{ store.undangan.musik }}</span>
+            </div>
+          </div>
+
+          <template v-if="(store as any).showLogoWatermark !== false">
+            <div class="menu-social-section">
+              <p class="menu-section-label">Hubungi &amp; Ikuti Kami</p>
+              <div class="menu-social-row">
+                <a :href="platformInfo.instagramUrl" target="_blank" rel="noopener noreferrer" class="menu-social-btn" @click="playClickSound()" @mouseenter="playHoverSound()">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                    <rect x="2" y="2" width="20" height="20" rx="5" />
+                    <circle cx="12" cy="12" r="4.2" />
+                    <circle cx="17.4" cy="6.6" r="1.1" fill="currentColor" stroke="none" />
+                  </svg>
+                  {{ platformInfo.instagram }}
+                </a>
+                <a :href="platformInfo.websiteUrl" target="_blank" rel="noopener noreferrer" class="menu-social-btn" @click="playClickSound()" @mouseenter="playHoverSound()">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M2 12h20" />
+                    <path d="M12 2c2.7 2.7 4.2 6.2 4.2 10s-1.5 7.3-4.2 10c-2.7-2.7-4.2-6.2-4.2-10S9.3 4.7 12 2z" />
+                  </svg>
+                  {{ platformInfo.website }}
+                </a>
+                <a :href="`https://wa.me/${platformInfo.whatsapp}`" target="_blank" rel="noopener noreferrer" class="menu-social-btn menu-social-btn--full" @click="playClickSound()" @mouseenter="playHoverSound()">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+                    <path d="M12 0C5.373 0 0 5.373 0 12c0 2.122.553 4.113 1.522 5.842L.057 23.882l6.175-1.621A11.943 11.943 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.894a9.881 9.881 0 0 1-5.031-1.378l-.361-.215-3.736.98.998-3.648-.235-.374A9.847 9.847 0 0 1 2.105 12C2.105 6.526 6.526 2.105 12 2.105c5.473 0 9.894 4.421 9.894 9.895 0 5.473-4.421 9.894-9.894 9.894z"/>
+                  </svg>
+                  {{ platformInfo.phoneDisplay }}
+                </a>
+              </div>
+            </div>
+            <div class="menu-brand-footer">
+              <span class="menu-brand-text">Dibuat dengan</span>
+              <div class="menu-brand-logo-row">
+                <img src="/playmoment/logo-teal.png" alt="PlayMoment" class="menu-brand-logo" />
+                <span class="menu-brand-name">PlayMoment</span>
+              </div>
+            </div>
+          </template>
         </section>
       </div>
     </template>
@@ -4636,35 +4655,36 @@ function isVisible(sectionKey: string, fieldKey: string): boolean {
 .invitation-root {
   position: relative !important;
   inset: auto !important;
-  min-height: 100dvh;
-  width: 100%;
-  background: #fff;
-  overflow-x: hidden;
+  min-height: 100dvh !important;
+  width: 100% !important;
+  max-width: 480px !important;
+  margin: 0 auto !important;
+  overflow-x: hidden !important;
+  box-shadow: 0 0 60px rgba(0, 0, 0, 0.15) !important;
 }
 
+/* Cover (layar sebelum undangan dibuka) + loading di dalamnya (cover-pixel-loading pakai
+   inset:0 relatif ke cover-wrap) — disamain persis dengan lebar .invitation-root (480px)
+   biar nggak ada mismatch ukuran antara cover/loading dengan isi undangan pas di-scroll. */
 .cover-wrap {
-  position: relative !important;
-  inset: auto !important;
-  top: auto !important;
-  left: auto !important;
-  transform: none !important;
+  top: 0 !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
   width: 100% !important;
+  max-width: 480px !important;
   height: 100dvh !important;
   aspect-ratio: auto !important;
   border-radius: 0 !important;
-  box-shadow: none !important;
-  z-index: auto !important;
-}
-@media (min-width: 600px) and (max-aspect-ratio: 4/3) {
-  .cover-wrap {
-    width: 100% !important;
-    height: 100dvh !important;
-  }
+  box-shadow: 0 0 60px rgba(0, 0, 0, 0.15) !important;
 }
 
-/* Tombol & bubble fixed ke viewport — karena .invitation-root sekarang full-screen
-   (nggak dibatasi max-width lagi), posisi ini otomatis nempel ke tepi drawer/undangan,
-   bukan lagi ke tepi teal-background kayak sebelumnya */
+/* Tombol & bubble fixed ke viewport secara vertikal (biar tetap keliatan pas discroll),
+   tapi horizontalnya dihitung supaya nempel ke tepi FRAME HP (max-width 480px, center),
+   bukan ke tepi browser. Di mobile (viewport < ~512px) otomatis balik ke tepi layar biasa
+   karena hasil calc-nya jadi negatif/kecil dan max() milih 16px.
+   PENTING: !important wajib di semua nilai top/left/right/bottom di sini, karena rule
+   aslinya ada di <style scoped> yang punya spesifisitas lebih tinggi (atribut data-v-xxxx
+   otomatis ditambah Vue), sedangkan blok override ini ada di <style> global biasa. */
 .right-btns,
 .hamburger-btn,
 .ucapan-wrap,
@@ -4673,45 +4693,62 @@ function isVisible(sectionKey: string, fieldKey: string): boolean {
   position: fixed !important;
 }
 .right-btns {
-  top: max(16px, 3%);
-  right: max(16px, 3%);
+  bottom: max(16px, 3%) !important;
+  top: auto !important;
+  right: max(16px, calc(50vw - 240px + 16px)) !important;
 }
 .hamburger-btn {
-  top: max(16px, 3%);
-  left: max(16px, 3%);
+  top: max(16px, 3%) !important;
+  left: max(16px, calc(50vw - 240px + 16px)) !important;
 }
+/* Tombol +, panah, Lihat/Sembunyikan Ucapan dihapus */
 .ucapan-btns {
-  bottom: max(16px, 3%);
-  left: max(16px, 3%);
+  display: none !important;
 }
-.ucapan-wrap {
-  bottom: max(72px, 11%);
-  left: max(16px, 3%);
-  right: max(16px, 3%);
-}
+/* Bubble chat "Silahkan konfirmasi kehadiran..." dihapus */
+.ucapan-wrap,
 .ucapan-empty-card {
-  position: fixed !important;
+  display: none !important;
+}
+/* Tombol WA melayang (quick-jump ke section contact) dihapus — udah ada tombol WA
+   di dalam section contact-nya sendiri (.modal-contact-btn) */
+.right-btns button[title="Hubungi Kami"] {
+  display: none !important;
+}
+/* Quotes: box background dihapus juga, biar cuma teks quote-nya aja yang tampil */
+.mp-new-quotes-wrap {
+  background: transparent !important;
+  padding: 0 !important;
 }
 
 /* Tombol close di header — nggak perlu lagi karena bukan modal, section selalu tampil */
 .inv-card .modal-custom-close {
   display: none;
 }
-
-/* ══ SCROLL CONTAINER & SECTION CARD ══ */
-.scroll-invitation {
-  width: 100%;
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--c-tombol, #7c3aed) 8%, #fff),
-    color-mix(in srgb, var(--c-efek, #f472b6) 8%, #fff)
-  );
-}
-.inv-section {
-  padding: 28px 16px;
+/* Header navy (judul modal) & border card dihapus — yang ditampilkan cuma isinya aja,
+   bukan style popup lagi */
+.inv-card .modal-custom-header {
+  display: none;
 }
 .inv-card {
-  background: #fff;
+  border: none !important;
+}
+
+/* ══ SCROLL CONTAINER & SECTION CARD ══ */
+/* Background dihapus dari sini — tiap section (inv-section) nanti punya bg sendiri-sendiri
+   per elemen/per section, bukan satu gradient buat semua halaman */
+.scroll-invitation {
+  width: 100%;
+}
+.inv-section {
+  min-height: 100dvh;
+  padding: 28px 16px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.inv-card {
   border-radius: 20px;
   overflow: hidden;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
@@ -4720,6 +4757,22 @@ function isVisible(sectionKey: string, fieldKey: string): boolean {
 .inv-card .modal-body-inner {
   padding: 18px 16px;
 }
+
+/* ══ SEMENTARA: bg beda-beda tiap section buat ngecek ukuran/tinggi halaman ══
+   Hapus/ganti blok ini kalau desain background per-section yang asli udah siap. */
+#sec-quotes { background: #fde68a; }
+#sec-mempelai { background: #bfdbfe; }
+#sec-acara { background: #fbcfe8; }
+#sec-maps { background: #bbf7d0; }
+#sec-rundown { background: #fed7aa; }
+#sec-galeri { background: #ddd6fe; }
+#sec-dresscode { background: #a5f3fc; }
+#sec-lovestory { background: #fecaca; }
+#sec-gift { background: #d9f99d; }
+#sec-rsvp { background: #fde68a; }
+#sec-contact { background: #bfdbfe; }
+#sec-penutup { background: #fbcfe8; }
+
 
 /* ══ SECTION PENUTUP / SALAM ══ */
 .inv-section--salam {
@@ -4764,4 +4817,108 @@ function isVisible(sectionKey: string, fieldKey: string): boolean {
   margin-top: 4px;
 }
 
+
+/* == MENU: dropdown list simpel, bukan modal kartu besar ==
+   Backdrop cuma buat nangkep klik di luar (invisible, biar bisa nutup menu),
+   panel-nya jadi list teks doang, nempel di bawah tombol hamburger. */
+.menu-backdrop {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  align-items: flex-start !important;
+  justify-content: flex-start !important;
+  padding: 0 !important;
+}
+.menu-panel {
+  position: fixed !important;
+  top: max(76px, calc(3% + 60px)) !important;
+  left: max(16px, calc(50vw - 240px + 16px)) !important;
+  width: min(260px, calc(100vw - 32px)) !important;
+  max-width: none !important;
+  max-height: none !important;
+  background: #fff !important;
+  border: none !important;
+  border-radius: 14px !important;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18) !important;
+}
+/* Header/subtitle/tombol close dihapus - cukup klik di luar buat nutup menu */
+.menu-panel-header,
+.menu-panel-sub {
+  display: none !important;
+}
+.menu-panel-body {
+  padding: 8px !important;
+  gap: 0 !important;
+  overflow-y: visible !important;
+  flex: none !important;
+}
+/* Tiap item jadi baris teks polos, dipisah garis tipis */
+.menu-card {
+  background: transparent !important;
+  border: none !important;
+  border-bottom: 1px solid #f0f0f0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding: 13px 10px !important;
+}
+.menu-card:last-child {
+  border-bottom: none !important;
+}
+.menu-card:hover {
+  background: #f7f7f7 !important;
+  transform: none !important;
+}
+.menu-card-img-wrap,
+.menu-card-desc,
+.menu-card-arrow {
+  display: none !important;
+}
+.menu-card-title {
+  font-size: 16px !important;
+  font-weight: 600 !important;
+  margin-bottom: 0 !important;
+}
+.menu-panel-footer {
+  background: transparent !important;
+}
+/* Blok musik + "Hubungi & Ikuti Kami" digabung lagi di halaman thanks (salam).
+   Tampilan WM dibikin compact/professional biar tinggi halaman salam nggak jomplang
+   sama halaman-halaman lain (yang semuanya min-height: 100dvh). */
+.inv-section--salam .menu-music-section,
+.inv-section--salam .menu-social-section {
+  margin-top: 10px;
+  padding: 8px 10px;
+  text-align: left;
+}
+.inv-section--salam .menu-section-label {
+  font-size: 9px;
+  margin-bottom: 4px;
+}
+.inv-section--salam .menu-music-item {
+  padding: 5px 8px;
+  font-size: 11px;
+  gap: 6px;
+}
+.inv-section--salam .menu-social-row {
+  gap: 5px;
+}
+.inv-section--salam .menu-social-btn {
+  padding: 6px 8px;
+  font-size: 10px;
+  gap: 4px;
+}
+.inv-section--salam .menu-brand-footer {
+  align-items: center;
+  padding: 8px 0 0;
+  margin-top: 2px;
+  gap: 4px;
+}
+.inv-section--salam .menu-brand-logo {
+  height: 20px;
+}
+.inv-section--salam .menu-brand-name {
+  font-size: 13px;
+}
+.inv-section--salam .menu-brand-text {
+  font-size: 9px;
+}
 </style>
