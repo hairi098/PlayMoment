@@ -3453,8 +3453,8 @@ function persistEditorSnapshot() {
 const temaMap = {
   "tema-1": defineAsyncComponent(() => import("@/components/themes/v1/Tema1.vue")),
   "tema-2": defineAsyncComponent(() => import("@/components/themes/v2/Tema2.vue")),
-  "tema-3": defineAsyncComponent(() => import("@/components/themes/Tema3.vue")),
-  "tema-4": defineAsyncComponent(() => import("@/components/themes/Tema4.vue")),
+  "tema-3": defineAsyncComponent(() => import("@/components/themes/v1/Tema3.vue")),
+  "tema-4": defineAsyncComponent(() => import("@/components/themes/v2/Tema4.vue")),
 };
 const temaComponent = computed(
   () => temaMap[store.temaSlug] ?? temaMap["tema-1"],
@@ -3775,6 +3775,32 @@ const sectionFields = {
       _t: "und",
       type: "instagram",
       placeholder: "username",
+    },
+  ],
+  // ── 2b. Opening / Welcome (muncul setelah undangan diklik buka, sebelum Quotes)
+  welcome: [
+    {
+      field: "welcomeLabel",
+      label: "Label Atas",
+      _t: "sec",
+      _s: "welcome",
+      _k: "label",
+    },
+    {
+      field: "welcomeJudul",
+      label: "Judul Sambutan",
+      _t: "sec",
+      _s: "welcome",
+      _k: "judul",
+    },
+    {
+      field: "welcomePesan",
+      label: "Pesan Sambutan",
+      _t: "sec",
+      _s: "welcome",
+      _k: "pesan",
+      multiline: true,
+      rows: 4,
     },
   ],
   // ── 3. Quotes / Ayat
@@ -5076,6 +5102,7 @@ const shortcutMenus = computed(() => [
 const sectionIcons = {
   opening: { img: "/icons/sections/cover.png", width: "38px" },
   mempelai: { img: "/icons/sections/mempelai.png", width: "38px" },
+  welcome: { img: "/icons/sections/welcome.png", width: "36px" },
   quotes: { img: "/icons/sections/quotes.png", width: "36px" },
   acara: { img: "/icons/sections/acara.png", width: "34px" },
   galeri: { img: "/icons/sections/galeri.png", width: "36px" },
