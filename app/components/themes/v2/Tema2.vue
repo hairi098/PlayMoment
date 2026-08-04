@@ -621,6 +621,15 @@ const rundownData = computed(() => ({
   items: (store.sectionContents as any).rundown?.items || [],
 }));
 
+// ── WELCOME / OPENING (setelah undangan diklik buka, sebelum quotes): dari store
+const welcomeData = computed(() => ({
+  label: (store.sectionContents as any).welcome?.label || "Undangan Pernikahan",
+  judul: (store.sectionContents as any).welcome?.judul || "Selamat Datang",
+  pesan:
+    (store.sectionContents as any).welcome?.pesan ||
+    "Kami dengan penuh kebahagiaan mengundang Anda untuk turut merayakan hari istimewa kami. 🙏",
+}));
+
 // ── QUOTES: dari store
 const quotesData = computed(() => ({
   text: (store.sectionContents as any).quotes?.text || "",
@@ -1165,6 +1174,27 @@ function isVisible(sectionKey: string, fieldKey: string): boolean {
       <!-- ══ KONTEN UNDANGAN — SCROLL NORMAL, SEMUA SECTION ══ -->
       <!-- ══════════════════════════════════════════════════════ -->
       <div class="scroll-invitation">
+
+        <!-- ══ WELCOME / OPENING (muncul setelah undangan diklik buka) ══ -->
+        <section
+          v-if="store.sectionStates.welcome?.active !== false"
+          id="sec-welcome"
+          class="inv-section"
+        >
+          <div class="mp-new-welcome-wrap">
+            <div class="mp-new-welcome-box">
+              <div class="mp-new-welcome-deco">
+                <span></span><span class="mp-new-welcome-diamond">◆</span><span></span>
+              </div>
+              <div class="mp-new-welcome-label" v-if="isVisible('welcome', 'welcomeLabel')">{{ welcomeData.label }}</div>
+              <div class="mp-new-welcome-judul" :style="{ color: store.customColors.tombol || '#7c3aed' }" v-if="isVisible('welcome', 'welcomeJudul')">
+                {{ welcomeData.judul }}
+              </div>
+              <div class="mp-new-welcome-tamu" v-if="openingData.namaTamu">{{ openingData.namaTamu }}</div>
+              <p class="mp-new-welcome-pesan" v-if="isVisible('welcome', 'welcomePesan')">{{ welcomeData.pesan }}</p>
+            </div>
+          </div>
+        </section>
 
         <!-- ══ QUOTES ══ -->
         <section
@@ -2715,6 +2745,57 @@ function isVisible(sectionKey: string, fieldKey: string): boolean {
   color: #94a3b8;
   text-align: center;
   font-style: italic;
+  margin: 0;
+}
+.mp-new-welcome-wrap {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 22px 16px;
+}
+.mp-new-welcome-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.mp-new-welcome-deco {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.mp-new-welcome-deco span:not(.mp-new-welcome-diamond) {
+  width: 24px;
+  height: 1px;
+  background: #cbd5e1;
+}
+.mp-new-welcome-diamond {
+  font-size: 10px;
+  color: #94a3b8;
+}
+.mp-new-welcome-label {
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #94a3b8;
+  margin-bottom: 6px;
+}
+.mp-new-welcome-judul {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.mp-new-welcome-tamu {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a2e45;
+  margin-bottom: 10px;
+}
+.mp-new-welcome-pesan {
+  font-size: 12px;
+  color: #475569;
+  line-height: 1.6;
+  max-width: 280px;
   margin: 0;
 }
 .mp-new-card {

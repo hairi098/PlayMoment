@@ -91,6 +91,11 @@ const SECTION_ICONS = {
     <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z" stroke="currentColor" stroke-width="1.8"/>
     <path d="M6 1v3M10 1v3M14 1v3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
   </svg>`,
+
+  welcome: `<svg width="28" height="28" fill="none" viewBox="0 0 24 24">
+    <path d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z" stroke="currentColor" stroke-width="1.8"/>
+    <polyline points="22,6 12,13 2,6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`,
 };
 
 // ─────────────────────────────────────────────
@@ -99,6 +104,7 @@ const SECTION_ICONS = {
 const DEFAULT_SECTIONS = [
   { key: "opening", name: "Cover", color: "#7ecec4" },
   { key: "mempelai", name: "Mempelai", color: "#f472b6" },
+  { key: "welcome", name: "Opening", color: "#c4b5fd" },
   { key: "quotes", name: "Qoutes", color: "#a78bfa" },
   { key: "acara", name: "Event", color: "#60a5fa" },
   { key: "maps", name: "Maps", color: "#34d399" },
@@ -234,6 +240,11 @@ export const useUndanganStore = defineStore(
         namaLengkap: "",
         orangTua: "",
         igLink: "",
+      },
+      welcome: {
+        label: "Undangan Pernikahan",
+        judul: "Selamat Datang",
+        pesan: "Kami dengan penuh kebahagiaan mengundang Anda untuk turut merayakan hari istimewa kami. 🙏",
       },
       quotes: {
         text: "Dan di antara tanda-tanda (kebesaran)-Nya ialah Dia menciptakan pasangan-pasangan untukmu dari jenismu sendiri",

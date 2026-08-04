@@ -108,9 +108,8 @@ const temaInfo = computed(() => allThemes.find(t => t.slug === temaSlug.value) |
 
 // ── Map tema slug ke komponen ──
 const THEME_MAP = {
-  tema1: defineAsyncComponent(() => import("@/components/themes/Tema1.vue")),
-  // Tambah tema lain di sini
-  // tema2: defineAsyncComponent(() => import("@/components/themes/Tema2.vue")),
+  tema1: defineAsyncComponent(() => import("@/components/themes/v1/Tema1.vue")),
+  tema2: defineAsyncComponent(() => import("@/components/themes/v2/Tema2.vue")),
 };
 
 const currentThemeComponent = computed(() => {

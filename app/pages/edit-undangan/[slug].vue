@@ -3451,10 +3451,10 @@ function persistEditorSnapshot() {
 
 // ── Tema component map
 const temaMap = {
-  "tema-1": defineAsyncComponent(() => import("@/components/themes/Tema1.vue")),
-  "tema-2": defineAsyncComponent(() => import("@/components/themes/Tema2.vue")),
+  "tema-1": defineAsyncComponent(() => import("@/components/themes/v1/Tema1.vue")),
+  "tema-2": defineAsyncComponent(() => import("@/components/themes/v2/Tema2.vue")),
   "tema-3": defineAsyncComponent(() => import("@/components/themes/Tema3.vue")),
-  "tema-4": defineAsyncComponent(() => import("@/components/themes/Tema4.vue")), // ← FIX: ditambahkan
+  "tema-4": defineAsyncComponent(() => import("@/components/themes/Tema4.vue")),
 };
 const temaComponent = computed(
   () => temaMap[store.temaSlug] ?? temaMap["tema-1"],

@@ -105,8 +105,8 @@ useSeoMeta({
   twitterImage: ogImage,
 });
 
-import Tema1 from "@/components/themes/Tema1.vue";
-import Tema2 from "@/components/themes/Tema2.vue";
+import Tema1 from "@/components/themes/v1/Tema1.vue";
+import Tema2 from "@/components/themes/v2/Tema2.vue";
 import Tema3 from "@/components/themes/Tema3.vue";
 import Tema4 from "@/components/themes/Tema4.vue";
 
