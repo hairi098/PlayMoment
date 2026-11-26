@@ -35,7 +35,7 @@
                   <span>{{ getInitials(user?.name) }}</span>
                 </div>
                 <div class="dropdown-userinfo">
-                  <p class="dropdown-paket">{{ user.paket }}</p>
+                  <p class="dropdown-paket">{{ hasPackage ? user.paket : "Belum ada paket" }}</p>
                   <p class="dropdown-name">{{ user.name }}</p>
                   <p class="dropdown-email">{{ user.email }}</p>
                 </div>
@@ -125,32 +125,43 @@
               <p class="profile-email">{{ user.email }}</p>
             </div>
 
-            <p class="paket-label">Masa Aktif Paket</p>
-            <p class="paket-name">{{ user.paket }}</p>
+            <template v-if="hasPackage">
+              <p class="paket-label">Masa Aktif Paket</p>
+              <p class="paket-name">{{ user.paket }}</p>
 
-            <div class="countdown-row">
-              <div
-                v-for="(item, i) in countdown"
-                :key="i"
-                class="countdown-box"
-              >
-                <span class="countdown-num">{{ item.value }}</span>
-                <span class="countdown-unit">{{ item.unit }}</span>
+              <div class="countdown-row">
+                <div
+                  v-for="(item, i) in countdown"
+                  :key="i"
+                  class="countdown-box"
+                >
+                  <span class="countdown-num">{{ item.value }}</span>
+                  <span class="countdown-unit">{{ item.unit }}</span>
+                </div>
               </div>
-            </div>
 
-            <button class="btn-perpanjang" @click="navigateTo('/paket')">
-              Perpanjang Masa Aktif
-            </button>
+              <button class="btn-perpanjang" @click="checkoutPaket(paketEntry.id)">
+                {{ isExpired ? "Perpanjang Paket" : "Perpanjang Masa Aktif" }}
+              </button>
+            </template>
+
+            <template v-else>
+              <p class="paket-label">Paket Anda</p>
+              <p class="paket-name paket-empty">Belum ada paket aktif</p>
+              <p class="paket-hint">
+                Pilih paket untuk mulai membuat undangan digitalmu.
+              </p>
+              <button class="btn-perpanjang" @click="navigateTo('/paket')">
+                Pilih Paket
+              </button>
+            </template>
           </section>
 
           <!-- ===== UPGRADE BANNER ===== -->
-          <section class="upgrade-banner">
-            <p class="upgrade-text">
-              Tingkatkan paket Anda untuk<br />mendapatkan lebih banyak fitur
-            </p>
-            <button class="btn-upgrade" @click="navigateTo('/paket')">
-              Upgrade Paket
+          <section v-if="banner" class="upgrade-banner">
+            <p class="upgrade-text">{{ banner.text }}</p>
+            <button class="btn-upgrade" @click="banner.action()">
+              {{ banner.cta }}
             </button>
           </section>
 
@@ -206,10 +217,11 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from "vue";
-import DashboardSidebar from "~/components/DashboardSidebar.vue";
-import DashboardBottomNav from "~/components/DashboardBottomNav.vue";
+import DashboardSidebar from "~/components/dashboard/DashboardSidebar.vue";
+import DashboardBottomNav from "~/components/dashboard/DashboardBottomNav.vue";
 import { useAccountStore } from "~/stores/useAccountStore";
 import { useCustomerIdentity } from "~/composables/useCustomerIdentity";
+import { getPaketByAdminName, buildCheckoutQuery } from "~/config/paket";
 
 // ===== DRAWER =====
 const drawerOpen = ref(false);
@@ -258,6 +270,66 @@ const userExpiry = computed(() =>
     : new Date(Date.now() + 29 * 86400000),
 );
 
+// ===== STATUS PAKET =====
+// Paket dianggap ada hanya kalau namanya dikenali di katalog (bukan "Belum ada paket")
+const paketEntry = computed(() => getPaketByAdminName(user.value.paket));
+const hasPackage = computed(() => !!paketEntry.value);
+
+const now = ref(Date.now());
+const msLeft = computed(() =>
+  user.value.expiryDate ? new Date(user.value.expiryDate) - now.value : null,
+);
+const isExpired = computed(
+  () => hasPackage.value && msLeft.value !== null && msLeft.value <= 0,
+);
+const daysLeft = computed(() =>
+  msLeft.value === null ? null : Math.ceil(msLeft.value / 86400000),
+);
+
+const checkoutPaket = (id) =>
+  navigateTo({ path: "/checkout", query: buildCheckoutQuery(id) });
+
+// Banner ajakan — isinya menyesuaikan kondisi paket customer
+const banner = computed(() => {
+  if (!hasPackage.value) {
+    return {
+      text: "Belum punya paket? Pilih paket dan mulai buat undangan digitalmu.",
+      cta: "Lihat Paket",
+      action: () => navigateTo("/paket"),
+    };
+  }
+  const id = paketEntry.value.id;
+  if (isExpired.value) {
+    return {
+      text: "Masa aktif paketmu sudah berakhir. Perpanjang agar undanganmu tetap bisa diakses.",
+      cta: "Perpanjang Paket",
+      action: () => checkoutPaket(id),
+    };
+  }
+  if (daysLeft.value !== null && daysLeft.value <= 3) {
+    return {
+      text: `Masa aktif paketmu tinggal ${daysLeft.value} hari. Perpanjang sekarang agar undangan tidak terputus.`,
+      cta: "Perpanjang Sekarang",
+      action: () => checkoutPaket(id),
+    };
+  }
+  if (id === "basic") {
+    return {
+      text: "Mau undangan dibuatkan admin dengan masa aktif 30 hari? Upgrade ke Premium.",
+      cta: "Upgrade ke Premium",
+      action: () => checkoutPaket("premium"),
+    };
+  }
+  if (id === "premium") {
+    return {
+      text: "Butuh masa aktif 90 hari, revisi tanpa batas, dan respon prioritas? Upgrade ke Prioritas.",
+      cta: "Upgrade ke Prioritas",
+      action: () => checkoutPaket("prioritas"),
+    };
+  }
+  return null; // paket tertinggi & masih lama: tidak perlu banner
+});
+
 // ===== COUNTDOWN =====
 const countdown = ref([
   { value: "29", unit: "Hari" },
@@ -268,6 +340,7 @@ const countdown = ref([
 
 let timer = null;
 const updateCountdown = () => {
+  now.value = Date.now();
   const diff = userExpiry.value - Date.now();
   if (diff <= 0) {
     countdown.value = [
@@ -628,6 +701,16 @@ const stats = computed(() => {
   font-weight: 800;
   color: #fff;
   margin: 0 0 16px;
+}
+
+.paket-empty {
+  margin-bottom: 8px;
+}
+.paket-hint {
+  font-size: 13px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.75);
+  margin: 0 0 20px;
 }
 
 .countdown-row {

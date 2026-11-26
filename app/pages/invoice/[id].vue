@@ -286,7 +286,7 @@ import { ref, computed, onMounted, onUnmounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useAccountStore } from "~/stores/useAccountStore";
 import { supabase } from "~/lib/supabase";
-import { resolveCheckoutPaket } from "~/utils/paket-catalog";
+import { resolveCheckoutPaket } from "~/config/paket";
 
 const route = useRoute();
 const router = useRouter();

@@ -1,5 +1,5 @@
 {
-  "name": "PlayMoment",
+  "name": "playmoment",
   "private": true,
   "type": "module",
   "scripts": {
@@ -8,7 +8,8 @@
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
     "lint": "eslint .",
-    "typecheck": "nuxt typecheck"
+    "typecheck": "nuxt typecheck",
+    "lint:fix": "eslint . --fix"
   },
   "dependencies": {
     "@iconify-json/lucide": "^1.2.108",
@@ -35,6 +36,5 @@
     "eslint": "^10.4.0",
     "typescript": "^6.0.3",
     "vue-tsc": "^3.3.0"
-  },
-  "packageManager": "pnpm@11.1.3"
+  }
 }

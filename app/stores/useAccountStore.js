@@ -5,28 +5,13 @@ import { supabase } from "../lib/supabase";
 import { createEditorId } from "~/utils/invitation-id";
 import { getDefaultMaxUndangan } from "~/utils/customer-quota";
 import {
-  ADMIN_USERS,
   DEFAULT_CUSTOMER_PASSWORD,
   normalizeEmail,
 } from "~/utils/auth-credentials";
 import { formatRupiahNumber, getPackageDays } from "~/config/paket";
 import { calculatePromoDiscount } from "~/utils/promo";
+import { adminQuery } from "~/utils/admin-query";
 
-/**
- * Helper: jalankan operasi DB via server route (pakai service key).
- * Dipakai untuk semua operasi yang butuh bypass RLS:
- * insert/update/delete pada customers, orders, invitations, promos.
- */
-async function adminQuery(payload) {
-  const result = await $fetch("/api/admin/query", {
-    method: "POST",
-    body: payload,
-  });
-  if (!result.ok) {
-    throw new Error(result.message || "Admin query gagal");
-  }
-  return result.data;
-}
 
 const palette = [
   "#7ecec4",
@@ -310,6 +295,7 @@ export const useAccountStore = defineStore("account", {
     },
     logout() {
       this.currentUser = null;
+      useNotify().info("Berhasil logout");
     },
 
     async authenticate(email, password) {
@@ -327,28 +313,11 @@ export const useAccountStore = defineStore("account", {
         }
         return {
           success: true,
-          token: `mock-token-${result.user.role}-${Date.now()}`,
-          user: result.user,
+          token: result.token,
+          user: { ...result.user, sessionToken: result.token },
         };
       } catch (err) {
-        // Fallback ke client-side check jika server route belum tersedia
-        // (misal saat development tanpa service key)
-        console.warn("Server auth gagal, fallback ke client-side:", err);
-      }
-
-      // ── Fallback client-side (development only — tanpa service key) ──
-      // Kalau server route gagal karena service key belum diset,
-      // hanya izinkan admin login (hardcoded), customer tidak bisa login
-      const admin = ADMIN_USERS.find(
-        (u) => normalizeEmail(u.email) === key && u.password === password,
-      );
-      if (admin) {
-        const { password: _pw, ...user } = admin;
-        return {
-          success: true,
-          token: `mock-token-admin-${Date.now()}`,
-          user: { ...user, loginAt: new Date().toISOString() },
-        };
+        console.warn("Server auth gagal:", err);
       }
 
       // Customer login tidak bisa fallback ke client-side karena customers table
@@ -360,7 +329,7 @@ export const useAccountStore = defineStore("account", {
     },
 
     // ── CUSTOMERS ───────────────────────────────────────────────
-    async addCustomer(payload) {
+    async addCustomer(payload, opts = {}) {
       const days = resolveDays(payload.paket);
       const expiry = new Date();
       expiry.setDate(expiry.getDate() + days);
@@ -381,7 +350,7 @@ export const useAccountStore = defineStore("account", {
       };
 
       try {
-        const data = await adminQuery({ table: "customers", operation: "insert", data: row, single: true });
+        const data = await adminQuery({ table: "customers", operation: "insert", data: row, single: true, notify: opts.notify ? "Customer berhasil ditambahkan" : undefined });
         const customer = mapCustomer(data);
         this.customers.push(customer);
         return customer;
@@ -391,7 +360,7 @@ export const useAccountStore = defineStore("account", {
       }
     },
 
-    async updateCustomer(id, patch) {
+    async updateCustomer(id, patch, opts = {}) {
       const target = this.customers.find((c) => c.id === id);
       if (!target) return;
 
@@ -415,7 +384,7 @@ export const useAccountStore = defineStore("account", {
       if (patch.expiryDate !== undefined) row.expiry_date = patch.expiryDate;
 
       try {
-        await adminQuery({ table: "customers", operation: "update", data: row, match: { id } });
+        await adminQuery({ table: "customers", operation: "update", data: row, match: { id }, notify: opts.notify ? "Data customer berhasil disimpan" : undefined });
         Object.assign(target, patch);
       } catch (err) {
         console.error("updateCustomer:", err);
@@ -424,7 +393,7 @@ export const useAccountStore = defineStore("account", {
 
     async deleteCustomer(id) {
       try {
-        await adminQuery({ table: "customers", operation: "delete", match: { id } });
+        await adminQuery({ table: "customers", operation: "delete", match: { id }, notify: "Customer berhasil dihapus" });
         this.customers = this.customers.filter((c) => c.id !== id);
       } catch (err) {
         console.error("deleteCustomer:", err);
@@ -456,7 +425,7 @@ export const useAccountStore = defineStore("account", {
       };
 
       try {
-        const data = await adminQuery({ table: "orders", operation: "insert", data: row, single: true });
+        const data = await adminQuery({ table: "orders", operation: "insert", data: row, single: true, notify: "Pesanan berhasil dikirim" });
         const order = mapOrder(data);
         this.orders.unshift(order);
         return order;
@@ -502,6 +471,7 @@ export const useAccountStore = defineStore("account", {
       if (!order) return { ok: false, message: "Pesanan tidak ditemukan." };
 
       let customer = this.getCustomerByEmail(order.email);
+      const existingCustomer = !!customer;
       const loginPassword = password || order.loginPassword || DEFAULT_CUSTOMER_PASSWORD;
 
       // Hitung expiry: perpanjang dari tanggal expiry lama (kalau belum expired) atau dari sekarang
@@ -532,8 +502,11 @@ export const useAccountStore = defineStore("account", {
         await this.updateCustomer(customer.id, {
           status: "aktif",
           paket: order.paket,
-          maxUndangan: maxUndangan ?? customer.maxUndangan ?? 1,
-          password: loginPassword,
+          maxUndangan:
+            maxUndangan ??
+            (customer.maxUndangan || getDefaultMaxUndangan(order.paket)),
+          // Password hanya diganti kalau admin mengisinya; password pendaftaran tetap dipakai
+          ...(password ? { password } : {}),
           expiryDate: newExpiryDate, // set manual agar tidak override dari paket saja
         });
       }
@@ -548,7 +521,14 @@ export const useAccountStore = defineStore("account", {
 
       await this.updateOrder(orderId, patch);
 
-      return { ok: true, order, loginPassword };
+      const keptOwnPassword = !!existingCustomer && !password;
+      return {
+        ok: true,
+        order,
+        loginPassword: keptOwnPassword
+          ? "(password saat pendaftaran)"
+          : loginPassword,
+      };
     },
 
     async rejectOrder(orderId, alasan) {
@@ -644,7 +624,7 @@ export const useAccountStore = defineStore("account", {
     async addPromo(payload) {
       const row = toDbPromo(payload);
       try {
-        const data = await adminQuery({ table: "promos", operation: "insert", data: row, single: true });
+        const data = await adminQuery({ table: "promos", operation: "insert", data: row, single: true, notify: "Promo berhasil ditambahkan" });
         const promo = mapPromo(data);
         this.promos.push(promo);
         return promo;
@@ -659,7 +639,7 @@ export const useAccountStore = defineStore("account", {
       if (!target) return;
       const row = toDbPromo({ ...target, ...patch });
       try {
-        await adminQuery({ table: "promos", operation: "update", data: row, match: { id } });
+        await adminQuery({ table: "promos", operation: "update", data: row, match: { id }, notify: "Promo berhasil disimpan" });
         Object.assign(target, patch);
       } catch (err) {
         console.error("updatePromo:", err);
@@ -668,7 +648,7 @@ export const useAccountStore = defineStore("account", {
 
     async deletePromo(id) {
       try {
-        await adminQuery({ table: "promos", operation: "delete", match: { id } });
+        await adminQuery({ table: "promos", operation: "delete", match: { id }, notify: "Promo berhasil dihapus" });
         this.promos = this.promos.filter((p) => p.id !== id);
       } catch (err) {
         console.error("deletePromo:", err);
@@ -779,7 +759,7 @@ export const useAccountStore = defineStore("account", {
       };
 
       try {
-        const data = await adminQuery({ table: "invitations", operation: "insert", data: row, single: true });
+        const data = await adminQuery({ table: "invitations", operation: "insert", data: row, single: true, notify: "Undangan berhasil dibuat" });
         const invitation = mapInvitation(data);
         this.invitations.unshift(invitation);
         return invitation;
@@ -801,9 +781,9 @@ export const useAccountStore = defineStore("account", {
       }
     },
 
-    async deleteInvitation(id) {
+    async deleteInvitation(id, opts = {}) {
       try {
-        await adminQuery({ table: "invitations", operation: "delete", match: { id } });
+        await adminQuery({ table: "invitations", operation: "delete", match: { id }, notify: opts.notify ? "Undangan berhasil dihapus" : undefined });
         this.invitations = this.invitations.filter((i) => i.id !== id);
       } catch (err) {
         console.error("deleteInvitation:", err);
@@ -822,6 +802,10 @@ export const useAccountStore = defineStore("account", {
           "saveEditorSnapshot: invitation not found for editorId:",
           editorId,
         );
+        useNotify().error("Undangan tidak ditemukan", {
+          description: "Perubahan belum tersimpan. Muat ulang halaman.",
+          id: "editor-save",
+        });
         return;
       }
 
@@ -895,6 +879,8 @@ export const useAccountStore = defineStore("account", {
           operation: "update",
           data: patch,
           match: { editor_id: editorId },
+          notify: "Perubahan tersimpan ke database",
+          notifyId: "editor-save",
         });
       } catch (err) {
         console.error("saveEditorSnapshot:", err);

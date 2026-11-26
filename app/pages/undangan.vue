@@ -555,8 +555,8 @@
 <script setup>
 import { ref, computed, onMounted } from "vue";
 const router = useRouter();
-import DashboardSidebar from "~/components/DashboardSidebar.vue";
-import DashboardBottomNav from "~/components/DashboardBottomNav.vue";
+import DashboardSidebar from "~/components/dashboard/DashboardSidebar.vue";
+import DashboardBottomNav from "~/components/dashboard/DashboardBottomNav.vue";
 import { useAccountStore } from "~/stores/useAccountStore";
 import { useCustomerIdentity } from "~/composables/useCustomerIdentity";
 
@@ -619,7 +619,7 @@ const handleHapus = (inv) => {
 };
 const konfirmasiHapus = () => {
   if (!hapusTarget.value) return;
-  accountStore.deleteInvitation(hapusTarget.value.id);
+  accountStore.deleteInvitation(hapusTarget.value.id, { notify: true });
   hapusTarget.value = null;
 };
 

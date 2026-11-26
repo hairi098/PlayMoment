@@ -325,7 +325,7 @@ import {
   resolveCheckoutPaket,
   formatRupiahNumber,
   resolvePaketEntry,
-} from "~/utils/paket-catalog";
+} from "~/config/paket";
 
 const router = useRouter();
 

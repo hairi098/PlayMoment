@@ -261,8 +261,8 @@
 
 <script setup>
 import { ref, computed } from "vue";
-import DashboardSidebar from "~/components/DashboardSidebar.vue";
-import DashboardBottomNav from "~/components/DashboardBottomNav.vue";
+import DashboardSidebar from "~/components/dashboard/DashboardSidebar.vue";
+import DashboardBottomNav from "~/components/dashboard/DashboardBottomNav.vue";
 import { useCustomerIdentity } from "~/composables/useCustomerIdentity";
 
 // Route param — ganti dengan useRoute().params.slug di Nuxt

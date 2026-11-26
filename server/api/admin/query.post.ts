@@ -2,7 +2,11 @@
  * POST /api/admin/query
  *
  * Generic server-side Supabase proxy untuk operasi yang butuh service role key.
- * Hanya bisa diakses dari admin yang sudah login (dicek via header session).
+ * Wajib kirim header `Authorization: Bearer <token>` dari /api/auth/login.
+ * Hak akses per peran (lihat authorize() di bawah):
+ *   - admin     : semua tabel & operasi di ALLOWED_TABLES
+ *   - customer  : hanya data miliknya sendiri (filter dipaksa di server)
+ *   - tanpa login: hanya membuat order baru (checkout publik) dan membaca promo
  *
  * Request body:
  * {
@@ -16,15 +20,126 @@
  * }
  */
 
-import { createClient } from "@supabase/supabase-js";
-
-const SUPABASE_URL = "https://izszfloyozvxcvgyaulr.supabase.co";
-
 // Tabel yang boleh diakses via endpoint ini
 const ALLOWED_TABLES = [
   "customers", "orders", "invitations", "promos",
   "foto_assets", "musik_assets", "guests", "ucapan",
 ];
+
+
+const isPlain = (v: unknown) =>
+  v === null || ["string", "number", "boolean"].includes(typeof v);
+const isObj = (v: unknown) =>
+  v !== null && typeof v === "object" && !Array.isArray(v);
+
+type Verdict =
+  | { ok: true; data: any; match: any }
+  | { ok: false; status: number; message: string };
+
+const deny = (status: number, message: string): Verdict => ({
+  ok: false,
+  status,
+  message,
+});
+
+// Kolom yang tidak boleh bocor ke non-admin
+const SECRET_COLUMNS: Record<string, string[]> = {
+  customers: ["password"],
+  orders: ["login_password"],
+};
+
+function authorize(
+  session: SessionPayload | null,
+  req: { table: string; operation: string; data: any; match: any; select?: string },
+): Verdict {
+  const { table, operation } = req;
+  let { data, match } = req;
+
+  if (match != null && (!isObj(match) || !Object.values(match).every(isPlain))) {
+    return deny(400, "Parameter match tidak valid.");
+  }
+  if (data != null && !isObj(data)) {
+    return deny(400, "Parameter data tidak valid.");
+  }
+
+  // ── Admin: akses penuh ──
+  if (session?.role === "admin") return { ok: true, data, match };
+
+  // Non-admin: kolom select dibatasi ke karakter aman
+  if (req.select && !/^[\w\s,*]+$/.test(req.select)) {
+    return deny(400, "Parameter select tidak valid.");
+  }
+
+  // ── Tanpa login ──
+  if (!session) {
+    if (table === "promos" && operation === "select") {
+      return { ok: true, data, match };
+    }
+    if (table === "orders" && operation === "insert" && data) {
+      // Checkout publik: order selalu masuk sebagai "menunggu konfirmasi"
+      return {
+        ok: true,
+        match,
+        data: {
+          ...data,
+          status: "menunggu_konfirmasi",
+          pembayaran_dikonfirmasi: false,
+          customer_id: null,
+          catatan_admin: "",
+          confirmed_at: null,
+        },
+      };
+    }
+    return deny(401, "Login diperlukan.");
+  }
+
+  // ── Customer: hanya data miliknya ──
+  const ownerCol: Record<string, string> = {
+    customers: "id",
+    orders: "customer_id",
+    invitations: "customer_id",
+  };
+
+  if (table === "promos" && operation === "select") {
+    return { ok: true, data, match };
+  }
+  if (!(table in ownerCol)) return deny(403, "Akses ditolak.");
+  const col = ownerCol[table];
+
+  if (operation === "select") {
+    return { ok: true, data, match: { ...(match || {}), [col]: session.id } };
+  }
+
+  if (table === "invitations") {
+    if (operation === "insert" && data) {
+      return { ok: true, match, data: { ...data, customer_id: session.id } };
+    }
+    if (operation === "update" && data && match && Object.keys(match).length) {
+      const { customer_id: _c, ...safe } = data;
+      return { ok: true, data: safe, match: { ...match, customer_id: session.id } };
+    }
+    if (operation === "delete" && match && Object.keys(match).length) {
+      return { ok: true, data, match: { ...match, customer_id: session.id } };
+    }
+  }
+
+  if (table === "orders" && operation === "insert" && data) {
+    return {
+      ok: true,
+      match,
+      data: {
+        ...data,
+        status: "menunggu_konfirmasi",
+        pembayaran_dikonfirmasi: false,
+        customer_id: session.id,
+        catatan_admin: "",
+        confirmed_at: null,
+      },
+    };
+  }
+
+  return deny(403, "Akses ditolak.");
+}
 
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig();
@@ -36,7 +151,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const body = await readBody(event);
-  const { table, operation, data, match, select: selectCols, order, single } = body || {};
+  let { table, operation, data, match, select: selectCols, order, single } = body || {};
 
   // Validasi tabel
   if (!table || !ALLOWED_TABLES.includes(table)) {
@@ -51,7 +166,17 @@ export default defineEventHandler(async (event) => {
     return { ok: false, message: `Operasi tidak valid: ${operation}` };
   }
 
-  const supabase = createClient(SUPABASE_URL, serviceKey);
+  // Otorisasi: tentukan siapa yang boleh melakukan apa
+  const session = getSession(event);
+  const verdict = authorize(session, { table, operation, data, match, select: selectCols });
+  if (!verdict.ok) {
+    setResponseStatus(event, verdict.status);
+    return { ok: false, message: verdict.message };
+  }
+  data = verdict.data;
+  match = verdict.match;
+
+  const supabase = createSupabaseAdmin(serviceKey);
 
   try {
     let query: any;
@@ -100,7 +225,19 @@ export default defineEventHandler(async (event) => {
       return { ok: false, message: error.message, error };
     }
 
-    return { ok: true, data: result };
+    // Jangan bocorkan kolom password ke non-admin
+    let out = result;
+    if (session?.role !== "admin" && SECRET_COLUMNS[table]) {
+      const strip = (row: any) => {
+        if (!row || typeof row !== "object") return row;
+        const copy = { ...row };
+        for (const c of SECRET_COLUMNS[table]) delete copy[c];
+        return copy;
+      };
+      out = Array.isArray(result) ? result.map(strip) : strip(result);
+    }
+
+    return { ok: true, data: out };
   } catch (err: any) {
     setResponseStatus(event, 500);
     return { ok: false, message: err?.message || "Server error" };

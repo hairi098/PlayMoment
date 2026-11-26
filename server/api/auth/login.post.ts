@@ -8,24 +8,18 @@
  * Response: { success, user, message? }
  */
 
-import { createClient } from "@supabase/supabase-js";
 import { ADMIN_USERS } from "~/utils/auth-credentials";
-
-const SUPABASE_URL = "https://izszfloyozvxcvgyaulr.supabase.co";
-
-// SERVICE ROLE KEY — baca dari runtime config Nuxt (diset via .env)
-// Tidak boleh expose ke client sama sekali
-function getServiceKey(): string {
-  try {
-    const config = useRuntimeConfig();
-    return (config.supabaseServiceRoleKey as string) || process.env.SUPABASE_SERVICE_ROLE_KEY || "";
-  } catch {
-    return process.env.SUPABASE_SERVICE_ROLE_KEY || "";
-  }
-}
 
 function normalizeEmail(email: string) {
   return (email || "").trim().toLowerCase();
+}
+
+function sessionSecretMissing() {
+  console.error("[auth/login] SESSION_SECRET belum diset di env");
+  return {
+    success: false,
+    message: "Konfigurasi server belum lengkap. Hubungi admin.",
+  };
 }
 
 export default defineEventHandler(async (event) => {
@@ -44,14 +38,17 @@ export default defineEventHandler(async (event) => {
   );
   if (admin) {
     const { password: _pw, ...user } = admin;
+    const token = signSession({ role: "admin", email: normalizeEmail(admin.email) }, event);
+    if (!token) return sessionSecretMissing();
     return {
       success: true,
+      token,
       user: { ...user, loginAt: new Date().toISOString() },
     };
   }
 
   // Cek customer dari Supabase pakai service key
-  const SERVICE_KEY = getServiceKey();
+  const SERVICE_KEY = getSupabaseServiceKey();
   if (!SERVICE_KEY) {
     // Fallback: kalau service key belum diset, log warning
     console.warn("[auth/login] SUPABASE_SERVICE_ROLE_KEY belum diset di env");
@@ -61,7 +58,7 @@ export default defineEventHandler(async (event) => {
     };
   }
 
-  const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
+  const supabase = createSupabaseAdmin(SERVICE_KEY);
   const { data: rows, error } = await supabase
     .from("customers")
     .select("*")
@@ -81,12 +78,27 @@ export default defineEventHandler(async (event) => {
     };
   }
 
-  if (customer.password !== password) {
+  if (!verifyPassword(password, customer.password)) {
     return { success: false, message: "Email atau password salah." };
   }
 
+  // Password lama (teks biasa) otomatis di-hash saat login berhasil
+  if (!isHashedPassword(customer.password)) {
+    await supabase
+      .from("customers")
+      .update({ password: hashPassword(password) })
+      .eq("id", customer.id);
+  }
+
+  const token = signSession(
+    { role: "customer", email: normalizeEmail(customer.email), id: customer.id },
+    event,
+  );
+  if (!token) return sessionSecretMissing();
+
   return {
     success: true,
+    token,
     user: {
       role: "customer",
       name: customer.nama,

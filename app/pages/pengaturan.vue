@@ -154,10 +154,9 @@
 
 <script setup>
 import { ref, watch } from "vue";
-import DashboardSidebar from "~/components/DashboardSidebar.vue";
-import DashboardBottomNav from "~/components/DashboardBottomNav.vue";
+import DashboardSidebar from "~/components/dashboard/DashboardSidebar.vue";
+import DashboardBottomNav from "~/components/dashboard/DashboardBottomNav.vue";
 import { useCustomerIdentity } from "~/composables/useCustomerIdentity";
-import { supabase } from "~/lib/supabase";
 
 const drawerOpen = ref(false);
 const dropdownOpen = ref(false);
@@ -183,6 +182,8 @@ const showPass = ref(false);
 const isSaving = ref(false);
 const saveError = ref("");
 const saveSuccess = ref(false);
+
+const notify = useNotify();
 
 const form = ref({
   name: user.value.name,
@@ -224,32 +225,36 @@ const saveForm = async () => {
   isSaving.value = true;
 
   try {
-    // Siapkan data yang akan diupdate
-    const updates = {
-      nama:  form.value.name.trim(),
-      email: form.value.email.trim(),
-      hp:    form.value.whatsapp.trim(),
-    };
+    // Simpan lewat server (butuh login, hanya bisa mengubah akun sendiri)
+    const res = await $fetch("/api/auth/update-profile", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accountStore.currentUser?.sessionToken || ""}`,
+      },
+      body: {
+        nama: form.value.name,
+        email: form.value.email,
+        hp: form.value.whatsapp,
+        password: form.value.password,
+      },
+    });
 
-    // Kalau password diisi, ikut diupdate
-    if (form.value.password.trim()) {
-      updates.password = form.value.password.trim();
-    }
-
-    const { error } = await supabase
-      .from("customers")
-      .update(updates)
-      .eq("id", customerId);
-
-    if (error) throw error;
-
-    // Sinkronisasi store supaya tampilan langsung terupdate
+    // Sinkronisasi store & sesi supaya tampilan langsung terupdate
     const customer = accountStore.customers.find((c) => c.id === customerId);
     if (customer) {
-      customer.nama  = updates.nama;
-      customer.email = updates.email;
-      customer.hp    = updates.hp;
+      customer.nama = res.user.name;
+      customer.email = res.user.email;
+      customer.hp = res.user.hp;
     }
+    accountStore.setCurrentUser({
+      ...accountStore.currentUser,
+      name: res.user.name,
+      email: res.user.email,
+      hp: res.user.hp,
+      sessionToken: res.token || accountStore.currentUser?.sessionToken,
+    });
+    form.value.whatsapp = res.user.hp === "-" ? "" : res.user.hp;
+    notify.success("Profil berhasil disimpan");
 
     // Reset password field setelah berhasil
     form.value.password = "";
@@ -257,7 +262,9 @@ const saveForm = async () => {
     setTimeout(() => { saveSuccess.value = false; }, 3000);
 
   } catch (err) {
-    saveError.value = err?.message || "Gagal menyimpan. Coba lagi.";
+    saveError.value =
+      err?.data?.message || err?.message || "Gagal menyimpan. Coba lagi.";
+    notify.error("Profil gagal disimpan", { description: saveError.value });
   } finally {
     isSaving.value = false;
   }

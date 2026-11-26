@@ -12,12 +12,17 @@ export default defineNuxtConfig({
     enabled: false,
   },
 
+  // Komponen dikelompokkan per folder (layout/, admin/, dashboard/, editor/, themes/),
+  // tapi nama auto-import tetap tanpa prefix folder: <AppFooter />, bukan <LayoutAppFooter />
+  components: [{ path: "~/components", pathPrefix: false }],
+
   css: ["~/assets/css/main.css", "~/assets/css/admin-shared.css"],
 
   // Runtime config — siteUrl dipakai untuk OG meta di halaman preview
   runtimeConfig: {
     // Server-side only (tidak expose ke client/browser)
     supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY || "",
+    sessionSecret: process.env.SESSION_SECRET || "",
     public: {
       siteUrl: process.env.NUXT_PUBLIC_SITE_URL || "https://playmoment.id",
     },
@@ -44,5 +49,4 @@ export default defineNuxtConfig({
       },
     },
   },
-  
 });

@@ -164,7 +164,7 @@
 import { computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useAccountStore } from "~/stores/useAccountStore";
-import { resolveCheckoutPaket } from "~/utils/paket-catalog";
+import { resolveCheckoutPaket } from "~/config/paket";
 
 const route = useRoute();
 const router = useRouter();

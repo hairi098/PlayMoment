@@ -1,0 +1,8 @@
+# Paksa LF di semua OS (sesuai .editorconfig) biar nggak ada diff "palsu" karena CRLF di Windows
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.ico binary

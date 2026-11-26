@@ -2,6 +2,7 @@
 // Store untuk manajemen upload foto asset & musik di admin dashboard
 import { defineStore } from "pinia";
 import { supabase } from "../lib/supabase";
+import { adminQuery } from "~/utils/admin-query";
 
 const KATEGORI_FOTO = ["background", "couple", "galeri", "dekorasi", "lainnya"];
 
@@ -9,15 +10,6 @@ const KATEGORI_FOTO = ["background", "couple", "galeri", "dekorasi", "lainnya"];
 const BUCKET_FOTO = "foto-assets";
 const BUCKET_MUSIK = "musik-assets";
 
-// Helper: operasi DB via server route (pakai service key, bypass RLS)
-async function adminQuery(payload) {
-  const result = await $fetch("/api/admin/query", {
-    method: "POST",
-    body: payload,
-  });
-  if (!result.ok) throw new Error(result.message || "Admin query gagal");
-  return result.data;
-}
 
 export const useAssetStore = defineStore("asset", {
   state: () => ({

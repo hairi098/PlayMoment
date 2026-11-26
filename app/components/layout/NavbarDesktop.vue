@@ -17,6 +17,7 @@
       </div>
 
       <div class="nav-actions">
+        <NuxtLink to="/daftar" class="btn-daftar">Daftar Gratis</NuxtLink>
         <button class="btn-login" @click="$emit('login')">
           <svg
             viewBox="0 0 24 24"
@@ -150,5 +151,22 @@ defineEmits(["login", "daftar"]);
 }
 .btn-login:hover {
   background: #243d5c;
+}
+
+.btn-daftar {
+  display: flex;
+  align-items: center;
+  padding: 9px 20px;
+  border-radius: 10px;
+  background: #7ecec4;
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffffff;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.2s;
+}
+.btn-daftar:hover {
+  background: #0c5d53;
 }
 </style>

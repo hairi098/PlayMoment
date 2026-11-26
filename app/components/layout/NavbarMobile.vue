@@ -60,6 +60,9 @@
 
         <!-- CTA Buttons -->
         <div class="menu-cta-group">
+          <NuxtLink to="/daftar" class="btn-daftar-full" @click="menuOpen = false">
+            Daftar Gratis
+          </NuxtLink>
           <button
             class="btn-login-full"
             @click="
@@ -285,6 +288,7 @@ const menuOpen = ref(false);
 }
 
 .btn-daftar-full {
+  text-decoration: none;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -294,14 +298,14 @@ const menuOpen = ref(false);
   font-size: 14px;
   font-weight: 700;
   color: #fff;
-  background: #1a2e45;
+  background: #7ecec4;
   border: none;
   border-radius: 10px;
   cursor: pointer;
   transition: background 0.2s;
 }
 .btn-daftar-full:hover {
-  background: #243d5c;
+  background: #0c5d53;
 }
 
 /* ===== TRANSITION ===== */

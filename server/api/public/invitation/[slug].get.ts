@@ -5,10 +5,6 @@
  * Pakai SERVICE ROLE KEY agar tidak terhalang RLS policy.
  */
 
-import { createClient } from "@supabase/supabase-js";
-
-const SUPABASE_URL = "https://izszfloyozvxcvgyaulr.supabase.co";
-
 export default defineEventHandler(async (event) => {
   const slug = getRouterParam(event, "slug");
 
@@ -16,19 +12,14 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: "Slug wajib diisi." });
   }
 
-  // useRuntimeConfig() harus dipanggil di dalam handler (request context)
-  const config = useRuntimeConfig(event);
-  const serviceKey =
-    (config.supabaseServiceRoleKey as string) ||
-    process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    "";
+  const serviceKey = getSupabaseServiceKey(event);
 
   if (!serviceKey) {
     console.error("[preview-api] SUPABASE_SERVICE_ROLE_KEY tidak tersedia");
     throw createError({ statusCode: 500, statusMessage: "Server configuration error." });
   }
 
-  const supabase = createClient(SUPABASE_URL, serviceKey);
+  const supabase = createSupabaseAdmin(serviceKey);
 
   const { data, error } = await supabase
     .from("invitations")

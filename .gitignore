@@ -25,3 +25,10 @@ logs
 
 # VSC
 .history
+
+# OS / Windows
+Thumbs.db
+*.lnk
+
+# Script lokal sekali pakai (jangan di-commit)
+scratch_*

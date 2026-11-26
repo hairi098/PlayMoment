@@ -1,4 +1,5 @@
 <template>
+  <UApp :toaster="{ position: 'top-center', duration: 3500 }">
   <div>
     <NuxtLayout>
       <ClientOnly v-if="showNav">
@@ -29,14 +30,15 @@
       <FloatingWhatsapp v-if="showNav" />
     </NuxtLayout>
   </div>
+  </UApp>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from "vue";
-import NavbarDesktop from "~/components/NavbarDesktop.vue";
-import NavbarMobile from "~/components/NavbarMobile.vue";
-import AppFooter from "~/components/AppFooter.vue";
-import FloatingWhatsapp from "~/components/FloatingWhatsapp.vue";
+import NavbarDesktop from "~/components/layout/NavbarDesktop.vue";
+import NavbarMobile from "~/components/layout/NavbarMobile.vue";
+import AppFooter from "~/components/layout/AppFooter.vue";
+import FloatingWhatsapp from "~/components/layout/FloatingWhatsapp.vue";
 import { useAccountStore } from "~/stores/useAccountStore";
 
 const accountStore = useAccountStore();
@@ -76,6 +78,7 @@ onMounted(async () => {
 // ===== HALAMAN YANG MENYEMBUNYIKAN NAV & FOOTER =====
 const hiddenRoutes = [
   "/login",
+  "/daftar",
   "/dashboard",
   "/undangan",
   "/invoices",
@@ -117,6 +120,26 @@ onUnmounted(() => {
   window.removeEventListener("resize", checkBreakpoint);
 });
 
+
+// ===== STATUS KONEKSI INTERNET =====
+const notify = useNotify();
+const onOffline = () =>
+  notify.error("Koneksi internet terputus", {
+    id: "net-status",
+    description: "Perubahan tidak akan tersimpan sampai tersambung lagi.",
+    duration: 8000,
+  });
+const onOnline = () =>
+  notify.success("Koneksi tersambung kembali", { id: "net-status" });
+onMounted(() => {
+  window.addEventListener("offline", onOffline);
+  window.addEventListener("online", onOnline);
+  if (!navigator.onLine) onOffline();
+});
+onUnmounted(() => {
+  window.removeEventListener("offline", onOffline);
+  window.removeEventListener("online", onOnline);
+});
 
 // ===== NAVIGASI =====
 const handleLogin = () => navigateTo("/login");

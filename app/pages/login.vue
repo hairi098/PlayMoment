@@ -3,9 +3,14 @@
     <!-- Header -->
     <div class="auth-header">
       <span class="header-logo">
-        <img src="/playmoment/logo-teal.png" alt="PlayMoment Logo" class="logo-img" />
+        <img
+          src="/playmoment/logo-teal.png"
+          alt="PlayMoment Logo"
+          class="logo-img"
+        />
         <span class="logo-text">
-          <span class="logo-play">Play</span><span class="logo-moment">Moment</span>
+          <span class="logo-play">Play</span
+          ><span class="logo-moment">Moment</span>
         </span>
       </span>
     </div>
@@ -15,8 +20,11 @@
       <p class="auth-sub">Masuk untuk mulai mengelola undangan Anda.</p>
       <p class="auth-notice">
         <strong
-          >Silakan login menggunakan akun yang diberikan admin setelah
-          pembayaran.</strong
+          >Belum punya akun?
+          <NuxtLink to="/daftar" style="color: #7ecec4"
+            >Daftar di sini.</NuxtLink
+          >
+          Undangan bisa dibuat setelah paket dikonfirmasi admin.</strong
         >
       </p>
 
@@ -58,7 +66,7 @@
         {{ loginNotice }}
       </div>
 
-      <form class="auth-form" @submit.prevent="handleLogin">
+      <form class="auth-form" method="post" @submit.prevent="handleLogin">
         <!-- E-Mail / WhatsApp -->
         <div class="field">
           <label for="email"
@@ -66,6 +74,7 @@
           >
           <input
             id="email"
+            name="email"
             v-model="form.email"
             type="text"
             placeholder="Masukan E-Mail/WhastApp"
@@ -80,6 +89,7 @@
           <div class="input-wrap">
             <input
               id="password"
+              name="password"
               v-model="form.password"
               :type="showPassword ? 'text' : 'password'"
               placeholder="Minimal 8 Karakter"
@@ -137,9 +147,8 @@
       </form>
 
       <p class="auth-footer">
-        Belum bisa login? Akun diberikan setelah pembayaran dikonfirmasi oleh
-        admin.
-        <a href="https://wa.me/" target="_blank" class="link-admin"
+        Belum bisa login? Pastikan email dan password sudah benar.
+        <a href="https://wa.me/6281250335005" target="_blank" class="link-admin"
           >Hubungi Admin.</a
         >
       </p>
@@ -158,6 +167,24 @@ const showPassword = ref(false);
 const loading = ref(false);
 const errorMsg = ref("");
 const accountStore = useAccountStore();
+const notify = useNotify();
+
+// Lupa password → minta admin reset lewat WhatsApp (pesan sudah terisi)
+const ADMIN_WA = "6281250335005";
+const forgotHref = computed(() => {
+  const email = form.email.trim();
+  const text = `Halo admin PlayMoment, saya lupa password akun saya.${
+    email ? ` Email: ${email}.` : ""
+  } Mohon bantuannya untuk reset password.`;
+  return `https://wa.me/${ADMIN_WA}?text=${encodeURIComponent(text)}`;
+});
+
+// Bersihkan sisa daftar akun tersimpan dari versi sebelumnya (kalau ada)
+if (import.meta.client) {
+  try {
+    localStorage.removeItem("pm_recent_logins");
+  } catch {}
+}
 
 // Auto-redirect kalau sudah login
 if (import.meta.client) {
@@ -219,12 +246,19 @@ const handleLogin = async () => {
           new Date(Date.now() + 30 * 86400000).toISOString(),
       });
     }
+    await accountStore.loadAll(true);
+    notify.success(
+      `Berhasil login. Selamat datang, ${auth.user.name || "kembali"}!`,
+    );
     const afterLogin = resolveRedirectAfterLogin(auth.user.role);
     if (afterLogin) await navigateTo(afterLogin);
     else if (auth.user.role === "admin") await navigateTo("/admin/dashboard");
     else await navigateTo("/dashboard");
   } catch (err) {
     errorMsg.value = "Terjadi kesalahan, coba lagi.";
+    notify.error("Tidak bisa terhubung ke server", {
+      description: "Periksa koneksi internet lalu coba lagi.",
+    });
   } finally {
     loading.value = false;
   }
@@ -352,6 +386,18 @@ const handleLogin = async () => {
   flex-direction: column;
   gap: 20px;
   margin-bottom: 24px;
+}
+
+.forgot-link {
+  align-self: flex-end;
+  margin-top: -4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #149284;
+  text-decoration: none;
+}
+.forgot-link:hover {
+  text-decoration: underline;
 }
 
 .field {

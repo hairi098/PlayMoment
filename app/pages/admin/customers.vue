@@ -179,12 +179,12 @@ const simpan = async () => {
   if(!formData.value.nama||!formData.value.email) { alert('Nama dan email wajib!'); return }
   if(formMode.value==='add'&&(!formData.value.password||formData.value.password.length<8)) { alert('Password minimal 8 karakter'); return }
   if(formMode.value==='add') {
-    await accountStore.addCustomer({ nama:formData.value.nama, email:formData.value.email, hp:formData.value.hp, paket:formData.value.paket, maxUndangan:formData.value.maxUndangan, password:formData.value.password, status:formData.value.status })
+    await accountStore.addCustomer({ nama:formData.value.nama, email:formData.value.email, hp:formData.value.hp, paket:formData.value.paket, maxUndangan:formData.value.maxUndangan, password:formData.value.password, status:formData.value.status }, { notify: true })
   } else if(editTarget.value) {
     const patch = { nama:formData.value.nama, email:formData.value.email, hp:formData.value.hp, paket:formData.value.paket, maxUndangan:formData.value.maxUndangan, status:formData.value.status }
     if(formData.value.password?.trim()) patch.password=formData.value.password.trim()
     if(formData.value.expiryDate) patch.expiryDate=new Date(formData.value.expiryDate).toISOString()
-    await accountStore.updateCustomer(editTarget.value.id, patch)
+    await accountStore.updateCustomer(editTarget.value.id, patch, { notify: true })
   }
   formOpen.value=false
 }

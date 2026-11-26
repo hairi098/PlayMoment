@@ -1,64 +1,69 @@
-# Nuxt Dashboard Template
+# PlayMoment
 
-[![Nuxt UI](https://img.shields.io/badge/Made%20with-Nuxt%20UI-00DC82?logo=nuxt&labelColor=020420)](https://ui.nuxt.com)
+Platform undangan pernikahan digital: pelanggan memilih tema, mengedit undangan lewat editor, lalu membagikan link undangan. Admin mengelola pelanggan, pesanan, promo, dan aset lewat dashboard.
 
-Get started with the Nuxt dashboard template with multiple pages, collapsible sidebar, keyboard shortcuts, light & dark mode, command palette and more, powered by [Nuxt UI](https://ui.nuxt.com).
+**Stack:** Nuxt 4 · Vue 3 · Nuxt UI v4 · Tailwind CSS v4 · Pinia (+ persistedstate) · Supabase
 
-- [Live demo](https://dashboard-template.nuxt.dev/)
-- [Documentation](https://ui.nuxt.com/docs/getting-started/installation/nuxt)
-
-<a href="https://dashboard-template.nuxt.dev/" target="_blank">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://ui.nuxt.com/assets/templates/nuxt/dashboard-dark.png">
-    <source media="(prefers-color-scheme: light)" srcset="https://ui.nuxt.com/assets/templates/nuxt/dashboard-light.png">
-    <img alt="Nuxt Dashboard Template" src="https://ui.nuxt.com/assets/templates/nuxt/dashboard-light.png">
-  </picture>
-</a>
-
-> The dashboard template for Vue is on https://github.com/nuxt-ui-templates/dashboard-vue.
-
-## Quick Start
-
-```bash [Terminal]
-npm create nuxt@latest -- -t ui/dashboard
-```
-
-## Deploy your own
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-name=dashboard&repository-url=https%3A%2F%2Fgithub.com%2Fnuxt-ui-templates%2Fdashboard&demo-image=https%3A%2F%2Fui.nuxt.com%2Fassets%2Ftemplates%2Fnuxt%2Fdashboard-dark.png&demo-url=https%3A%2F%2Fdashboard-template.nuxt.dev%2F&demo-title=Nuxt%20Dashboard%20Template&demo-description=A%20dashboard%20template%20with%20multi-column%20layout%20for%20building%20sophisticated%20admin%20interfaces.)
-
-## Setup
-
-Make sure to install the dependencies:
+## Mulai cepat
 
 ```bash
-pnpm install
+npm install
+cp .env.example .env     # lalu isi nilainya
+npm run dev              # http://localhost:3000
 ```
 
-## Development Server
+Setup database: jalankan isi `supabase/schema.sql` di Supabase SQL Editor.
 
-Start the development server on `http://localhost:3000`:
+| Perintah | Fungsi |
+| --- | --- |
+| `npm run dev` | Development server |
+| `npm run build` | Build production |
+| `npm run preview` | Preview hasil build |
+| `npm run lint` / `lint:fix` | Cek / perbaiki lint |
+| `npm run typecheck` | Type check |
 
-```bash
-pnpm dev
+## Environment variable
+
+| Variable | Keterangan |
+| --- | --- |
+| `NUXT_PUBLIC_SITE_URL` | URL publik website (untuk OG image & link preview) |
+| `SUPABASE_URL` | URL project Supabase (opsional, ada default di `server/utils/supabase.ts`) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Service role key — **server-only**, jangan pernah di-expose ke client |
+
+## Struktur folder
+
+```
+app/
+├─ assets/css/          CSS global (main.css, admin-shared.css)
+├─ components/
+│  ├─ layout/           Navbar, footer, loading, tombol WhatsApp
+│  ├─ admin/            Komponen khusus dashboard admin
+│  ├─ dashboard/        Sidebar & bottom-nav dashboard customer
+│  ├─ editor/           Komponen khusus editor undangan
+│  └─ themes/           Tema undangan (Tema1.vue, Tema2.vue, ...)
+├─ composables/         Logic reusable (useAuth, useKirimUndangan, ...)
+├─ config/              Konfigurasi & katalog (paket.js, themes.js)
+├─ layouts/             Layout halaman (admin.vue)
+├─ lib/                 Client library (supabase.js)
+├─ middleware/          Route middleware (auth.global.js)
+├─ pages/               Routing — struktur folder = URL, jangan dipindah sembarangan
+├─ stores/              Pinia stores (account, undangan, asset)
+└─ utils/               Helper murni tanpa state (promo, kuota, id undangan, auth-routes)
+
+server/
+├─ api/                 Endpoint (auth/, admin/, public/)
+├─ middleware/          preview-og.ts (OG tags untuk bot WhatsApp/Telegram)
+└─ utils/               Helper server (supabase.ts — auto-import)
+
+public/                 File statis; path-nya dipakai langsung sebagai URL
+supabase/schema.sql     Skema database
 ```
 
-## Production
+## Konvensi
 
-Build the application for production:
-
-```bash
-pnpm build
-```
-
-Locally preview production build:
-
-```bash
-pnpm preview
-```
-
-Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
-
-## Renovate integration
-
-Install [Renovate GitHub app](https://github.com/apps/renovate/installations/select_target) on your repository and you are good to go.
+- **Komponen** dikelompokkan per fungsi di `app/components/<grup>/`. Nama auto-import tetap tanpa prefix folder (`<AppFooter />`), diatur di `nuxt.config.ts`.
+- **Tema baru**: buat `app/components/themes/TemaN.vue`, daftarkan di `app/config/themes.js`, lalu di peta tema (`temaMap`) pada halaman editor & preview.
+- **Harga & paket** hanya diatur di `app/config/paket.js` (single source of truth).
+- **Akses Supabase dari server** lewat `getSupabaseServiceKey()` & `createSupabaseAdmin()` di `server/utils/supabase.ts`, jangan bikin client baru per file.
+- **Aset di `public/`**: path-nya bisa tersimpan di database/undangan yang sudah dibuat, jadi jangan di-rename tanpa migrasi data.
+- Line ending **LF** (lihat `.editorconfig` & `.gitattributes`).

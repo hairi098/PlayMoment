@@ -6,10 +6,6 @@
  * browser biasa mendapat 204 No Content.
  */
 
-import { createClient } from "@supabase/supabase-js";
-
-const SUPABASE_URL = "https://izszfloyozvxcvgyaulr.supabase.co";
-
 const BOT_UA_PATTERN =
   /whatsapp|facebookexternalhit|twitterbot|telegrambot|linkedinbot|slackbot|discordbot|googlebot|bingbot|applebot|curl|wget|python-requests|node-fetch/i;
 
@@ -37,13 +33,10 @@ export default defineEventHandler(async (event) => {
   if (!slug) return;
 
   // Pakai service role key agar tidak terhalang RLS
-  const config = useRuntimeConfig(event);
-  const serviceKey =
-    (config.supabaseServiceRoleKey as string) ||
-    process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    "";
+  const serviceKey = getSupabaseServiceKey(event);
 
-  const supabase = createClient(SUPABASE_URL, serviceKey || SUPABASE_URL);
+  // fallback string supaya createClient tidak throw; request tetap gagal aman kalau key belum diset
+  const supabase = createSupabaseAdmin(serviceKey || "missing-service-key");
 
   const { data: inv } = await supabase
     .from("invitations")
