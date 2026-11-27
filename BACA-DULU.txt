@@ -20,3 +20,5 @@ panel lengkung full-width. Tamu: penuh layar, di desktop dibatasi 480px di tenga
 v5: sudut kanvas dibuat rounded (editor 22px; tamu di layar lebar 24px). Ubah di .pe-stage-wrap (PageEditor.vue) / .tp-wrap (TemaPage.vue).
 
 v6: tinggi kanvas editor = proporsi layar HP (tinggi/lebar viewport, batas 1.6–2.1), di PageEditor.vue (phoneRatio).
+
+v7: kanvas editor sejajar baris halaman (margin 12px), tinggi tetap = lebar x PAGE_RATIO (1.45) di PageEditor.vue; tidak lagi bergantung tinggi layar (anti goyang).

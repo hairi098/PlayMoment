@@ -4,7 +4,7 @@
 //  baris halaman (drag, toggle tampil, tombol Edit) → klik Edit membuka toolbar + kanvas halaman.
 //  Klik teks / foto di kanvas → modal edit.
 import { ref, reactive, computed, watch, onMounted } from "vue";
-import { useElementSize, useWindowSize } from "@vueuse/core";
+import { useElementSize } from "@vueuse/core";
 import { supabase } from "~/lib/supabase";
 import { usePageEditor } from "~/composables/usePageEditor";
 import { PAGE_STAGE, PAGE_FONTS, PAGE_FONT_URL, IMAGE_SHAPES, safeUrl } from "~/utils/page-defaults";
@@ -34,13 +34,14 @@ const toggleOpen = (id) => { openId.value = openId.value === id ? null : id; };
 // ── skala kanvas ──
 const rootRef = ref(null);
 const { width: rootW } = useElementSize(rootRef);
-const { width: winW, height: winH } = useWindowSize();
-// Kanvas penuh lebar (tanpa space kiri-kanan); tinggi ala layar mobile, tidak terlalu tinggi.
-const scale = computed(() => (rootW.value ? rootW.value / PAGE_STAGE.width : 1));
-// Proporsi = layar HP (tinggi/lebar viewport, dibatasi 1.6–2.1) supaya sama dengan yang dilihat tamu.
-// Ubah angka 1.6 / 2.1 untuk atur batas tinggi.
-const phoneRatio = computed(() => Math.min(2.1, Math.max(1.6, winH.value / (winW.value || 1))));
-const stageH = computed(() => (rootW.value * phoneRatio.value) / scale.value);
+// Kanvas sejajar dengan baris halaman (kiri-kanan 12px) & tinggi TETAP berdasar lebar
+// (tidak bergantung tinggi layar, supaya tidak "goyang" saat address bar HP naik-turun).
+// Ubah PAGE_RATIO untuk atur tinggi (tinggi = lebar × rasio).
+const SIDE = 12;
+const PAGE_RATIO = 1.45;
+const stageW = computed(() => Math.max(0, rootW.value - SIDE * 2));
+const scale = computed(() => (stageW.value ? stageW.value / PAGE_STAGE.width : 1));
+const stageH = computed(() => (PAGE_STAGE.width * PAGE_RATIO));
 const stageHpx = computed(() => stageH.value * scale.value);
 
 // ── drag & drop urutan halaman ──
@@ -203,7 +204,7 @@ function togglePanel() {
         </div>
 
         <div class="pe-stage-area">
-          <div class="pe-stage-wrap" :style="{ width: rootW + 'px', height: stageHpx + 'px' }">
+          <div class="pe-stage-wrap" :style="{ width: stageW + 'px', height: stageHpx + 'px' }">
             <PageStage :page="p" :scale="scale" :height="stageH" editable @edit="openEdit" />
           </div>
         </div>
@@ -323,7 +324,7 @@ function togglePanel() {
 .pe-ico.danger { color: #1a2e45; }
 .pe-ico:disabled { opacity: .35; }
 .pe-name { flex: 1; min-width: 0; height: 38px; border: 1px solid #cbd5e1; border-radius: 10px; padding: 0 12px; font-size: 14px; color: #1a2e45; background: #fff; }
-.pe-stage-area { display: flex; justify-content: center; }
+.pe-stage-area { display: flex; justify-content: center; padding: 0 12px; }
 .pe-stage-wrap { position: relative; overflow: hidden; border-radius: 22px; }
 .pe-bar { display: flex; align-items: center; gap: 8px; padding: 12px 12px 0; overflow-x: auto; }
 .pe-btn { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border-radius: 8px; background: #0d9488; color: #fff; font-size: 13px; font-weight: 600; flex-shrink: 0; }

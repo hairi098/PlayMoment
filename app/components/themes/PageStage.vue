@@ -143,7 +143,7 @@ const hasSrc = (el) => !!safeUrl(el.src);
 <style scoped>
 .ps-stage { position: absolute; top: 0; left: 0; transform-origin: top left; background-size: cover; background-position: center; overflow: hidden; }
 .ps-panel { position: absolute; }
-.ps-flow { position: relative; width: 100%; height: 100%; box-sizing: border-box; overflow-y: auto; display: flex; scrollbar-width: none; }
+.ps-flow { position: relative; width: 100%; height: 100%; box-sizing: border-box; overflow-y: auto; display: flex; scrollbar-width: none; overscroll-behavior: contain; }
 .ps-flow::-webkit-scrollbar { display: none; }
 .ps-inner { margin: auto; width: 100%; }
 .ps-el { line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
