@@ -106,13 +106,13 @@ useSeoMeta({
 });
 
 import Tema1 from "@/components/themes/Tema1.vue";
-import Tema2 from "@/components/themes/Tema2.vue";
+import TemaPage from "@/components/themes/TemaPage.vue";
 import Tema3 from "@/components/themes/Tema3.vue";
 import Tema4 from "@/components/themes/Tema4.vue";
 
 const THEME_MAP = {
   "tema-1": Tema1,
-  "tema-2": Tema2,
+  "tema-2": TemaPage,
   "tema-3": Tema3,
   "tema-4": Tema4,
 };

@@ -13,6 +13,8 @@
       <h1 class="auth-title">Daftar<br />PlayMoment</h1>
       <p class="auth-sub">Buat akun gratis. Undangan bisa dibuat setelah paket dikonfirmasi admin.</p>
 
+      <p v-if="notice" class="info-note">{{ notice }}</p>
+
       <div v-if="errorMsg" class="error-alert">{{ errorMsg }}</div>
 
       <form class="auth-form" @submit.prevent="handleRegister">
@@ -29,7 +31,7 @@
           </div>
           <p v-if="hpTaken" class="field-error">
             Nomor WhatsApp ini sudah terdaftar.
-            <NuxtLink to="/login">Silakan login.</NuxtLink>
+            <NuxtLink :to="loginLink">Silakan login.</NuxtLink>
           </p>
         </div>
 
@@ -38,7 +40,7 @@
           <input id="email" v-model="form.email" type="email" placeholder="nama@gmail.com" autocomplete="email" required @input="emailTaken = false" @blur="checkTaken('email')" />
           <p v-if="emailTaken" class="field-error">
             Email ini sudah terdaftar.
-            <NuxtLink to="/login">Silakan login.</NuxtLink>
+            <NuxtLink :to="loginLink">Silakan login.</NuxtLink>
           </p>
         </div>
 
@@ -61,14 +63,14 @@
 
       <p class="auth-footer">
         Sudah punya akun?
-        <NuxtLink to="/login" class="link-admin">Masuk.</NuxtLink>
+        <NuxtLink :to="loginLink" class="link-admin">Masuk.</NuxtLink>
       </p>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive } from "vue";
+import { ref, reactive, computed } from "vue";
 import { useAccountStore } from "~/stores/useAccountStore";
 
 const form = reactive({ nama: "", hp: "", email: "", password: "" });
@@ -77,12 +79,31 @@ const loading = ref(false);
 const errorMsg = ref("");
 const accountStore = useAccountStore();
 const notify = useNotify();
+const route = useRoute();
 
-// Sudah login → langsung ke dashboard
+// Tujuan setelah daftar (mis. checkout paket / atur-undangan). Hanya path internal.
+const redirectTarget = computed(() => {
+  const t = typeof route.query.redirect === "string" ? route.query.redirect : "";
+  return t.startsWith("/") && !t.startsWith("//") && !t.startsWith("/admin") ? t : "";
+});
+const notice = computed(() => {
+  if (route.query.reason === "pilih-paket")
+    return "Daftar dulu untuk melanjutkan pembelian paket.";
+  if (route.query.reason === "pilih-tema")
+    return "Daftar dulu untuk memilih tema dan membuat undangan.";
+  return "";
+});
+const loginLink = computed(() =>
+  redirectTarget.value
+    ? { path: "/login", query: { redirect: redirectTarget.value, reason: route.query.reason } }
+    : "/login",
+);
+
+// Sudah login → langsung ke tujuan / dashboard
 if (import.meta.client) {
   const user = accountStore.currentUser;
   if (user?.role === "admin") navigateTo("/admin/dashboard");
-  else if (user?.role === "customer") navigateTo("/dashboard");
+  else if (user?.role === "customer") navigateTo(redirectTarget.value || "/dashboard");
 }
 
 // Cek lebih awal apakah email / WhatsApp sudah terdaftar
@@ -119,7 +140,7 @@ const handleRegister = async () => {
     accountStore.setCurrentUser({ ...res.user, sessionToken: res.token });
     await accountStore.loadAll(true);
     notify.success("Akun berhasil dibuat. Selamat datang!");
-    await navigateTo("/dashboard");
+    await navigateTo(redirectTarget.value || "/dashboard");
   } catch (err) {
     errorMsg.value =
       err?.data?.message || "Terjadi kesalahan, coba lagi.";
@@ -394,6 +415,15 @@ const handleRegister = async () => {
 }
 .link-admin:hover {
   text-decoration: underline;
+}
+.info-note {
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(126, 206, 196, 0.15);
+  color: #0a7060;
+  font-size: 13px;
+  font-weight: 600;
 }
 </style>
 

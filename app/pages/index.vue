@@ -481,6 +481,7 @@
 <script setup>
 import { ref } from "vue";
 import { getMarketingPakets, formatRupiahNumber, buildCheckoutQuery } from "~/config/paket";
+import { useAuth } from "~/composables/useAuth";
 import { useAccountStore } from "~/stores/useAccountStore";
 
 const accountStore = useAccountStore();
@@ -611,8 +612,12 @@ const packages = getMarketingPakets().map((p) => ({
   featured: p.featured,
 }));
 
-const pilihPaket = (p) =>
-  navigateTo({ path: "/checkout", query: buildCheckoutQuery(p.id) });
+const { requireCustomerForSelect } = useAuth();
+const pilihPaket = (p) => {
+  const target = { path: "/checkout", query: buildCheckoutQuery(p.id) };
+  if (!requireCustomerForSelect(target, "pilih-paket")) return;
+  navigateTo(target);
+};
 
 const steps = [
   {

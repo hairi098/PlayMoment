@@ -111,8 +111,9 @@ function authorize(
   }
 
   if (table === "invitations") {
-    if (operation === "insert" && data) {
-      return { ok: true, match, data: { ...data, customer_id: session.id } };
+    // Pembuatan undangan wajib lewat /api/credits/create-invitation (potong credit)
+    if (operation === "insert") {
+      return deny(403, "Buat undangan lewat endpoint credit.");
     }
     if (operation === "update" && data && match && Object.keys(match).length) {
       const { customer_id: _c, ...safe } = data;

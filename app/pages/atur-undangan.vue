@@ -15,7 +15,39 @@
       </span>
     </div>
 
-    <div class="auth-body">
+    <!-- Credit tidak cukup -->
+    <div v-if="noCredit" class="auth-body no-credit">
+      <div class="nc-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="10" />
+          <line x1="12" y1="8" x2="12" y2="12" />
+          <line x1="12" y1="16" x2="12.01" y2="16" />
+        </svg>
+      </div>
+      <h1 class="nc-title">Credit tidak cukup</h1>
+      <p class="nc-text">
+        Kamu perlu menambah credit untuk membuat undangan baru.
+      </p>
+
+      <dl class="nc-detail">
+        <div><dt>Dibutuhkan</dt><dd>{{ quota.cost }} credit</dd></div>
+        <div><dt>Saldo kamu</dt><dd>{{ quota.credits }} credit</dd></div>
+      </dl>
+
+      <a
+        class="nc-btn primary"
+        href="https://wa.me/6281250335005?text=Halo%20admin%2C%20saya%20mau%20top%20up%20credit%20PlayMoment"
+        target="_blank"
+        rel="noopener"
+        >Top up credit</a
+      >
+      <NuxtLink v-if="upgradeTarget" to="/paket" class="nc-btn outline"
+        >Upgrade ke {{ upgradeTarget }}</NuxtLink
+      >
+      <NuxtLink to="/dashboard" class="nc-back">Kembali ke dashboard</NuxtLink>
+    </div>
+
+    <div v-else class="auth-body">
       <h1 class="auth-title">Atur Link Undangan</h1>
       <p class="auth-sub">
         Buat link undangan unik yang akan dibagikan ke tamu.
@@ -155,6 +187,7 @@
 <script setup>
 import { ref, computed } from "vue";
 import { getThemeSlugByName } from "~/config/themes";
+import { PAKET_CATALOG, resolvePaketEntry } from "~/config/paket";
 import { createEditorId } from "~/utils/invitation-id";
 import { useAccountStore } from "~/stores/useAccountStore";
 import { useUndanganStore } from "~/stores/useUndanganStore";
@@ -180,6 +213,14 @@ if (import.meta.client) {
 
 const isSubmitting = ref(false);
 const quotaError = ref("");
+const noCredit = ref(false);
+// Basic → Premium, Premium → Prioritas, Prioritas (tertinggi) → tombol disembunyikan
+const upgradeTarget = computed(() => {
+  const ids = PAKET_CATALOG.map((p) => p.id);
+  const now = resolvePaketEntry(currentCustomer.value?.paket)?.id;
+  const next = PAKET_CATALOG[ids.indexOf(now) + 1];
+  return next?.adminName || "";
+});
 const selectedTema = computed(() => route.query.tema || "");
 const form = ref({ link: "" });
 const linkError = ref("");
@@ -225,10 +266,12 @@ const handleNext = async () => {
   if (!canProceed.value || isSubmitting.value) return;
   quotaError.value = "";
   if (!canCreateInvitation.value) {
-    quotaError.value =
-      quota.value.max >= quota.value.used && quota.value.max > 0
-        ? "Kuota undangan Anda sudah habis. Hubungi admin untuk menambah kuota."
-        : "Akun belum aktif atau kuota belum tersedia. Pastikan pesanan sudah dikonfirmasi admin.";
+    if (currentCustomer.value?.status === "aktif") {
+      noCredit.value = true;
+    } else {
+      quotaError.value =
+        "Akun belum aktif. Pastikan pesanan sudah dikonfirmasi admin.";
+    }
     return;
   }
   isSubmitting.value = true;
@@ -248,7 +291,12 @@ const handleNext = async () => {
       customerId: currentCustomer.value?.id,
     });
     if (!created) {
-      quotaError.value = "Gagal membuat undangan. Kuota mungkin sudah penuh.";
+      if (accountStore.lastInvitationError.startsWith("Credit tidak cukup")) {
+        noCredit.value = true;
+      } else {
+        quotaError.value =
+          accountStore.lastInvitationError || "Gagal membuat undangan.";
+      }
       isSubmitting.value = false;
       return;
     }
@@ -328,6 +376,59 @@ const handleNext = async () => {
   width: 100%;
   margin: 0 auto;
 }
+
+/* ── Credit tidak cukup ── */
+.no-credit {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  text-align: center;
+  padding-top: 120px;
+}
+.nc-icon {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f1f5f9;
+  color: #475569;
+}
+.nc-title { font-size: 20px; font-weight: 700; color: #1a2e45; margin: 0 0 6px; }
+.nc-text { font-size: 14px; line-height: 1.6; color: #64748b; margin: 0 0 24px; }
+.nc-detail {
+  margin: 0 0 24px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  text-align: left;
+}
+.nc-detail > div {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 16px;
+  font-size: 14px;
+}
+.nc-detail > div + div { border-top: 1px solid #e2e8f0; }
+.nc-detail dt { color: #64748b; }
+.nc-detail dd { margin: 0; font-weight: 600; color: #1a2e45; }
+.nc-btn {
+  display: block;
+  padding: 12px;
+  margin-bottom: 10px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+.nc-btn.primary { background: #2a9d8f; color: #fff; }
+.nc-btn.primary:hover { background: #228b7e; }
+.nc-btn.outline { border: 1px solid #cbd5e1; color: #1a2e45; background: #fff; }
+.nc-btn.outline:hover { background: #f8fafc; }
+.nc-back { font-size: 13px; color: #64748b; text-decoration: none; margin-top: 6px; }
+.nc-back:hover { color: #1a2e45; }
 
 .auth-title {
   font-size: 24px;

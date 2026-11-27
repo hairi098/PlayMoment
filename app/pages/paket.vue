@@ -188,14 +188,18 @@
 <script setup>
 import { ref } from "vue";
 import { getPaketPageCards, buildCheckoutQuery } from "~/config/paket";
+import { useAuth } from "~/composables/useAuth";
 
 const openFaq = ref(null);
 
-const goCheckout = (id) =>
-  navigateTo({
-    path: "/checkout",
-    query: buildCheckoutQuery(id, {}),
-  });
+const { requireCustomerForSelect } = useAuth();
+
+// Belum login/daftar → ke halaman daftar dulu, lalu lanjut ke checkout paket pilihannya
+const goCheckout = (id) => {
+  const target = { path: "/checkout", query: buildCheckoutQuery(id, {}) };
+  if (!requireCustomerForSelect(target, "pilih-paket")) return;
+  navigateTo(target);
+};
 const handleDaftar = () => goCheckout("basic");
 const handlePilih = (pkg) => goCheckout(pkg.id);
 

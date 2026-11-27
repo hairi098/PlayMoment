@@ -110,9 +110,9 @@
           <div class="adm-modal-body">
             <p class="td-sub" style="margin:0 0 14px">Customer <strong>{{ confirmTarget.nama }}</strong> akan dapat login dan membuat undangan.</p>
             <div class="adm-field" style="margin-bottom:12px">
-              <label class="adm-label">Kuota undangan</label>
-              <input class="adm-input" v-model.number="confirmMaxUndangan" type="number" min="1" max="99" />
-              <span class="td-sub">Default {{ confirmTarget.paket }}: {{ defaultKuota }} undangan</span>
+              <label class="adm-label">Credit Point yang ditambahkan</label>
+              <input class="adm-input" v-model.number="confirmCredits" type="number" min="0" />
+              <span class="td-sub">Default {{ confirmTarget.paket }}: {{ defaultCredits }} credit · {{ getCreditCost(confirmTarget.paket) }} credit/undangan</span>
             </div>
             <div class="adm-field" style="margin-bottom:12px">
               <label class="adm-label">Password login (kosong = auto)</label>
@@ -139,8 +139,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useAccountStore } from '~/stores/useAccountStore'
-import { getDefaultMaxUndangan } from '~/utils/customer-quota'
-import { getAdminPaketFilterOptions } from '~/config/paket'
+import { getAdminPaketFilterOptions, getCreditCost, getPackageCredits } from '~/config/paket'
 
 definePageMeta({ layout: 'admin' })
 
@@ -154,7 +153,7 @@ const page = ref(1)
 const perPage = 10
 const selectedPesanan = ref(null)
 const confirmTarget = ref(null)
-const confirmMaxUndangan = ref(1)
+const confirmCredits = ref(0)
 const confirmCatatan = ref('')
 const confirmPassword = ref('')
 const confirmError = ref('')
@@ -174,7 +173,7 @@ const chips = computed(() => [
   { label:'Dibatalkan',  num:accountStore.orders.filter(p=>p.status==='batal').length,     color:'#b91c1c', bg:'rgba(248,113,113,.1)', border:'rgba(248,113,113,.3)' },
 ])
 
-const defaultKuota = computed(() => confirmTarget.value ? getDefaultMaxUndangan(confirmTarget.value.paket) : 1)
+const defaultCredits = computed(() => confirmTarget.value ? getPackageCredits(confirmTarget.value.paket) : 0)
 
 const filtered = computed(() => accountStore.orders.filter(p => {
   const ms = !filterStatus.value || p.status === filterStatus.value
@@ -190,7 +189,7 @@ const detailRows = (p) => [
   { label:'Customer', val:p.nama }, { label:'Email', val:p.email },
   { label:'No. HP', val:p.hp||'-' }, { label:'Paket', val:p.paket },
   { label:'Total', val:'Rp '+p.total }, { label:'Tanggal', val:p.tanggal },
-  { label:'Kuota', val:(p.maxUndangan??'-')+' undangan' },
+  { label:'Credit Paket', val:getPackageCredits(p.paket)+' credit' },
   { label:'Status', val:statusLabel[p.status]||p.status },
   { label:'Catatan', val:p.catatan||'-' },
 ]
@@ -198,17 +197,17 @@ const detailRows = (p) => [
 const lihat = (p) => { selectedPesanan.value = p }
 const bukaKonfirmasi = (p) => {
   confirmTarget.value = p
-  // Selalu pakai default kuota dari paket — tidak perlu input manual
-  confirmMaxUndangan.value = getDefaultMaxUndangan(p.paket)
+  // Default credit dari paket, admin bisa mengubahnya
+  confirmCredits.value = getPackageCredits(p.paket)
   confirmCatatan.value = ''; confirmPassword.value = ''; confirmError.value = ''
   selectedPesanan.value = null
 }
 const tutupKonfirmasi = () => { confirmTarget.value = null; confirmError.value = '' }
 const jalankanKonfirmasi = async () => {
-  const max = Number(confirmMaxUndangan.value)
-  if (!max || max < 1) { confirmError.value = 'Kuota minimal 1.'; return }
+  const credits = Math.trunc(Number(confirmCredits.value))
+  if (!Number.isFinite(credits) || credits < 0) { confirmError.value = 'Credit tidak boleh minus.'; return }
   confirmLoading.value = true
-  const result = await accountStore.confirmOrder(confirmTarget.value.id, { maxUndangan: max, catatanAdmin: confirmCatatan.value.trim(), password: confirmPassword.value.trim() })
+  const result = await accountStore.confirmOrder(confirmTarget.value.id, { credits, catatanAdmin: confirmCatatan.value.trim(), password: confirmPassword.value.trim() })
   confirmLoading.value = false
   if (!result.ok) { confirmError.value = result.message; return }
   toastMsg.value = `✅ Pesanan #${confirmTarget.value.id} dikonfirmasi. Login: ${result.order?.email} / ${result.loginPassword}`

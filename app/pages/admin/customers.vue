@@ -24,7 +24,7 @@
       </div>
       <div class="adm-table-wrap">
         <table class="adm-table">
-          <thead><tr><th>Customer</th><th>No. HP</th><th>Paket</th><th>Masa Aktif</th><th>Kuota</th><th>Status</th><th>Aksi</th></tr></thead>
+          <thead><tr><th>Customer</th><th>No. HP</th><th>Paket</th><th>Masa Aktif</th><th>Credit</th><th>Status</th><th>Aksi</th></tr></thead>
           <tbody>
             <tr v-for="c in paginated" :key="c.id">
               <td>
@@ -39,7 +39,7 @@
                 <p class="td-nm" style="font-size:12px">{{ formatExpiryDate(c.expiryDate) }}</p>
                 <p class="td-sub" :class="{ 'cust-expired': isExpired(c.expiryDate) }">{{ expiryLabel(c.expiryDate) }}</p>
               </td>
-              <td class="td-nm" style="text-align:center">{{ accountStore.invitationCountByCustomer(c) }}/{{ (c.maxUndangan??1)>=99?'∞':(c.maxUndangan??1) }}</td>
+              <td style="text-align:center"><p class="td-nm">{{ c.credits ?? 0 }}</p><p class="td-sub">{{ accountStore.invitationCountByCustomer(c) }} undangan · {{ getCreditCost(c.paket) }}/undangan</p></td>
               <td>
                 <button class="cust-toggle" :class="{ aktif: c.status==='aktif' }" @click="toggleStatus(c)">
                   {{ c.status==='aktif' ? 'Aktif' : 'Nonaktif' }}
@@ -49,6 +49,7 @@
                 <div class="td-actions">
                   <button class="adm-btn adm-btn-outline adm-btn-sm" @click="openForm('edit',c)">Edit</button>
                   <button class="adm-btn adm-btn-outline adm-btn-sm" @click="openExtend(c)">Perpanjang</button>
+                  <button class="adm-btn adm-btn-outline adm-btn-sm" @click="openCredit(c)">Credit</button>
                   <button class="adm-btn adm-btn-danger adm-btn-sm" @click="hapus(c)">Hapus</button>
                 </div>
               </td>
@@ -84,7 +85,7 @@
               <div class="adm-field"><label class="adm-label">Paket</label>
                 <select class="adm-select" v-model="formData.paket"><option v-for="n in adminPaketNames" :key="n" :value="n">{{ n }}</option></select>
               </div>
-              <div class="adm-field"><label class="adm-label">Kuota Undangan</label><input class="adm-input" v-model.number="formData.maxUndangan" type="number" min="1" max="99" /></div>
+              <div v-if="formMode==='add'" class="adm-field"><label class="adm-label">Credit Point Awal</label><input class="adm-input" v-model.number="formData.credits" type="number" min="0" /></div>
               <div class="adm-field"><label class="adm-label">Status</label>
                 <select class="adm-select" v-model="formData.status"><option value="aktif">Aktif</option><option value="nonaktif">Nonaktif</option></select>
               </div>
@@ -94,6 +95,28 @@
           <div class="adm-modal-footer">
             <button class="adm-btn adm-btn-outline" @click="formOpen=false">Batal</button>
             <button class="adm-btn adm-btn-primary" @click="simpan">{{ formMode==='add'?'Buat Akun':'Simpan' }}</button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
+    <!-- Credit Modal -->
+    <Transition name="modal">
+      <div v-if="creditOpen" class="adm-modal-overlay" @click.self="creditOpen=false">
+        <div class="adm-modal">
+          <div class="adm-modal-head">
+            <h3 class="adm-modal-title">Atur Credit</h3>
+            <button class="adm-modal-close" @click="creditOpen=false">✕</button>
+          </div>
+          <div class="adm-modal-body">
+            <p v-if="creditTarget" class="td-nm" style="margin:0 0 4px">{{ creditTarget.nama }}</p>
+            <p v-if="creditTarget" class="td-sub" style="margin:0 0 16px">Saldo sekarang: {{ creditTarget.credits ?? 0 }} credit</p>
+            <div class="adm-field"><label class="adm-label">Tambah / kurangi (pakai minus untuk mengurangi)</label><input class="adm-input" v-model.number="creditAmount" type="number" placeholder="cth. 50 atau -20" /></div>
+            <div class="adm-field" style="margin-top:12px"><label class="adm-label">Catatan (opsional)</label><input class="adm-input" v-model="creditNote" placeholder="cth. Top up manual" /></div>
+          </div>
+          <div class="adm-modal-footer">
+            <button class="adm-btn adm-btn-outline" @click="creditOpen=false">Batal</button>
+            <button class="adm-btn adm-btn-teal" @click="applyCredit">Simpan</button>
           </div>
         </div>
       </div>
@@ -128,10 +151,9 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useAccountStore } from '~/stores/useAccountStore'
-import { getDefaultMaxUndangan } from '~/utils/customer-quota'
-import { getAdminPaketFilterOptions, getAdminPaketNames } from '~/config/paket'
+import { getAdminPaketFilterOptions, getAdminPaketNames, getCreditCost, getPackageCredits } from '~/config/paket'
 
 definePageMeta({ layout: 'admin' })
 
@@ -143,7 +165,8 @@ const search = ref(''); const filterStatus = ref(''); const filterPaket = ref(''
 const page = ref(1); const perPage = 10
 const formOpen = ref(false); const formMode = ref('add'); const editTarget = ref(null)
 const extendOpen = ref(false); const extendTarget = ref(null); const extendDays = ref(30)
-const formData = ref({ nama:'', email:'', password:'', hp:'', paket:'Basic', maxUndangan:1, status:'aktif', expiryDate:'' })
+const formData = ref({ nama:'', email:'', password:'', hp:'', paket:'Basic', credits:getPackageCredits('Basic'), status:'aktif', expiryDate:'' })
+watch(() => formData.value.paket, (p) => { if(formMode.value==='add') formData.value.credits = getPackageCredits(p) })
 
 const toDateInputValue = (iso) => { if(!iso) return ''; const d=new Date(iso); return isNaN(d.getTime())?'':d.toISOString().slice(0,10) }
 const formatExpiryDate = (iso) => { if(!iso) return '—'; const d=new Date(iso); return isNaN(d.getTime())?'—':d.toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'}) }
@@ -163,9 +186,18 @@ const paginated = computed(() => filtered.value.slice((page.value-1)*perPage, pa
 
 const openForm = (mode, c=null) => {
   formMode.value=mode; editTarget.value=c
-  formData.value = c ? { nama:c.nama, email:c.email, password:'', hp:c.hp, paket:c.paket, maxUndangan:c.maxUndangan??getDefaultMaxUndangan(c.paket), status:c.status, expiryDate:toDateInputValue(c.expiryDate) }
-    : { nama:'', email:'', password:'', hp:'', paket:'Basic', maxUndangan:1, status:'aktif', expiryDate:'' }
+  formData.value = c ? { nama:c.nama, email:c.email, password:'', hp:c.hp, paket:c.paket, credits:0, status:c.status, expiryDate:toDateInputValue(c.expiryDate) }
+    : { nama:'', email:'', password:'', hp:'', paket:'Basic', credits:getPackageCredits('Basic'), status:'aktif', expiryDate:'' }
   formOpen.value=true
+}
+const creditOpen = ref(false); const creditTarget = ref(null); const creditAmount = ref(0); const creditNote = ref('')
+const openCredit = (c) => { creditTarget.value=c; creditAmount.value=0; creditNote.value=''; creditOpen.value=true }
+const applyCredit = async () => {
+  const amount = Math.trunc(Number(creditAmount.value))
+  if(!amount) { alert('Isi jumlah credit (tidak boleh 0)'); return }
+  const res = await accountStore.grantCredits(creditTarget.value.id, amount, { type: 'adjust', note: creditNote.value.trim() || 'Koreksi manual admin' })
+  if(!res.ok) { alert(res.message || 'Gagal mengubah credit'); return }
+  creditOpen.value=false
 }
 const openExtend = (c) => { extendTarget.value=c; extendDays.value=30; extendOpen.value=true }
 const applyExtend = async (days) => {
@@ -179,9 +211,9 @@ const simpan = async () => {
   if(!formData.value.nama||!formData.value.email) { alert('Nama dan email wajib!'); return }
   if(formMode.value==='add'&&(!formData.value.password||formData.value.password.length<8)) { alert('Password minimal 8 karakter'); return }
   if(formMode.value==='add') {
-    await accountStore.addCustomer({ nama:formData.value.nama, email:formData.value.email, hp:formData.value.hp, paket:formData.value.paket, maxUndangan:formData.value.maxUndangan, password:formData.value.password, status:formData.value.status }, { notify: true })
+    await accountStore.addCustomer({ nama:formData.value.nama, email:formData.value.email, hp:formData.value.hp, paket:formData.value.paket, credits:Math.max(0, Math.trunc(Number(formData.value.credits)||0)), password:formData.value.password, status:formData.value.status }, { notify: true })
   } else if(editTarget.value) {
-    const patch = { nama:formData.value.nama, email:formData.value.email, hp:formData.value.hp, paket:formData.value.paket, maxUndangan:formData.value.maxUndangan, status:formData.value.status }
+    const patch = { nama:formData.value.nama, email:formData.value.email, hp:formData.value.hp, paket:formData.value.paket, status:formData.value.status }
     if(formData.value.password?.trim()) patch.password=formData.value.password.trim()
     if(formData.value.expiryDate) patch.expiryDate=new Date(formData.value.expiryDate).toISOString()
     await accountStore.updateCustomer(editTarget.value.id, patch, { notify: true })

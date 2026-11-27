@@ -21,6 +21,8 @@
           Selamat datang, <strong>{{ user.name }}</strong> 👋
         </p>
 
+        <CreditBadge />
+
         <!-- Avatar + Dropdown -->
         <div class="avatar-wrap" @click.stop="toggleDropdown">
           <button class="topbar-avatar" aria-label="Profil">
@@ -303,31 +305,41 @@ const banner = computed(() => {
     return {
       text: "Masa aktif paketmu sudah berakhir. Perpanjang agar undanganmu tetap bisa diakses.",
       cta: "Perpanjang Paket",
-      action: () => checkoutPaket(id),
+      action: () => navigateTo("/paket"),
     };
   }
   if (daysLeft.value !== null && daysLeft.value <= 3) {
     return {
       text: `Masa aktif paketmu tinggal ${daysLeft.value} hari. Perpanjang sekarang agar undangan tidak terputus.`,
       cta: "Perpanjang Sekarang",
-      action: () => checkoutPaket(id),
+      action: () => navigateTo("/paket"),
     };
   }
   if (id === "basic") {
     return {
       text: "Mau undangan dibuatkan admin dengan masa aktif 30 hari? Upgrade ke Premium.",
       cta: "Upgrade ke Premium",
-      action: () => checkoutPaket("premium"),
+      action: () => navigateTo("/paket"),
     };
   }
   if (id === "premium") {
     return {
       text: "Butuh masa aktif 90 hari, revisi tanpa batas, dan respon prioritas? Upgrade ke Prioritas.",
       cta: "Upgrade ke Prioritas",
-      action: () => checkoutPaket("prioritas"),
+      action: () => navigateTo("/paket"),
     };
   }
-  return null; // paket tertinggi & masih lama: tidak perlu banner
+  // Paket tertinggi (Prioritas): tetap ajak perpanjang, karena masa aktif undangan tidak selamanya
+  const until = userExpiry.value.toLocaleDateString("id-ID", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+  return {
+    text: `Undanganmu aktif sampai ${until}. Perpanjang masa aktif supaya tetap bisa dibuka tamu.`,
+    cta: "Perpanjang Masa Aktif",
+    action: () => navigateTo("/paket"),
+  };
 });
 
 // ===== COUNTDOWN =====

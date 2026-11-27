@@ -201,6 +201,8 @@ const loginNotice = computed(() => {
     return "Anda harus login sebagai admin untuk mengakses halaman administrator.";
   if (route.query.reason === "pilih-tema")
     return "Login dulu untuk memilih tema dan membuat undangan.";
+  if (route.query.reason === "pilih-paket")
+    return "Login dulu untuk melanjutkan pembelian paket.";
   if (route.query.reason === "customer")
     return "Login diperlukan untuk mengakses halaman customer.";
   return "";

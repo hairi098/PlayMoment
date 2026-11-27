@@ -107,6 +107,7 @@ export default defineEventHandler(async (event) => {
       id: customer.id,
       status: customer.status,
       maxUndangan: customer.max_undangan,
+      credits: customer.credits ?? 0,
       loginAt: new Date().toISOString(),
     },
   };

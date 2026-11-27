@@ -13,7 +13,8 @@ export const PAKET_CATALOG = [
     priceYearlyIdr: 566_400, // ~20% hemat tahunan
     durationDays: 7,
     maxUndangan: 1,
-    creditPoints: 50,
+    creditPoints: 50, // credit yang didapat saat beli paket
+    creditPerUndangan: 20, // credit yang terpakai tiap bikin 1 undangan
     featured: false,
     tagline: "Hemat & self-edit",
     description: "Paket Basic — edit mandiri, masa aktif 7 hari",
@@ -48,6 +49,8 @@ export const PAKET_CATALOG = [
     priceYearlyIdr: 1_238_400,
     durationDays: 30,
     maxUndangan: 1,
+    creditPoints: 100,
+    creditPerUndangan: 15,
     featured: true,
     tagline: "Hemat tapi Aman",
     description: "Paket Premium — dibuatkan admin, masa aktif 30 hari",
@@ -83,6 +86,7 @@ export const PAKET_CATALOG = [
     durationDays: 90,
     maxUndangan: 1,
     creditPoints: 200,
+    creditPerUndangan: 10,
     featured: false,
     tagline: "Terima beres & tenang",
     description: "Paket Prioritas — full admin, masa aktif 90 hari",
@@ -159,6 +163,16 @@ export function resolvePaketEntry(nameOrId) {
 
 export function getDefaultMaxUndangan(paket) {
   return resolvePaketEntry(paket)?.maxUndangan ?? 1;
+}
+
+/** Credit yang terpakai untuk membuat 1 undangan (Basic 20 · Premium 15 · Prioritas 10). */
+export function getCreditCost(paket) {
+  return resolvePaketEntry(paket)?.creditPerUndangan ?? 20;
+}
+
+/** Credit yang didapat customer saat membeli / dikonfirmasi paket. */
+export function getPackageCredits(paket) {
+  return resolvePaketEntry(paket)?.creditPoints ?? 0;
 }
 
 export function getPackageDays(paket) {

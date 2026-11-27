@@ -19,6 +19,8 @@
           Hubungi admin jika Anda butuh bantuan
         </p>
 
+        <CreditBadge />
+
         <!-- Avatar + Dropdown -->
         <div class="avatar-wrap" @click.stop="toggleDropdown">
           <button class="topbar-avatar" aria-label="Profil">

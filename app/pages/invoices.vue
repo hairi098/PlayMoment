@@ -19,6 +19,8 @@
           Kelola invoice dan riwayat transaksi
         </p>
 
+        <CreditBadge />
+
         <!-- Avatar + Dropdown -->
         <div class="avatar-wrap" @click.stop="toggleDropdown">
           <button class="topbar-avatar" aria-label="Profil">

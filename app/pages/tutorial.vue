@@ -15,6 +15,8 @@
         <h1 class="topbar-title">Tutorial</h1>
         <p class="topbar-welcome desktop-only">Panduan lengkap penggunaan aplikasi</p>
 
+        <CreditBadge />
+
         <div class="avatar-wrap" @click.stop="toggleDropdown">
           <button class="topbar-avatar" aria-label="Profil">
             <span class="topbar-avatar-initials">{{ getInitials(user?.name) }}</span>

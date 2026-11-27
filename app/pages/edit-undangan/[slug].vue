@@ -289,7 +289,7 @@
       </div>
 
       <!-- ── SECTION LIST ── -->
-      <div class="ep-section-list">
+      <div v-if="!isPageType" class="ep-section-list">
         <div
           v-for="sec in store.themeSections"
           :key="sec.key"
@@ -329,6 +329,8 @@
           </div>
         </div>
       </div>
+      <!-- ── EDITOR TIPE HALAMAN (Tema 2): menggantikan daftar section ── -->
+      <PageEditor v-else-if="!pageLoading" />
 
       <!-- ── MUSIC FOOTER STRIP ── -->
       <div class="ep-music-strip">
@@ -3248,6 +3250,7 @@ import { supabase } from "~/lib/supabase";
 import { useCustomerIdentity } from "~/composables/useCustomerIdentity";
 import { useKirimUndangan } from "~/composables/useKirimUndangan";
 import { useColorMode } from "#imports";
+import { isPageTheme } from "~/config/editor-types";
 
 const kirimOpen = ref(false);
 const {
@@ -3452,7 +3455,7 @@ function persistEditorSnapshot() {
 // ── Tema component map
 const temaMap = {
   "tema-1": defineAsyncComponent(() => import("@/components/themes/Tema1.vue")),
-  "tema-2": defineAsyncComponent(() => import("@/components/themes/Tema2.vue")),
+  "tema-2": defineAsyncComponent(() => import("@/components/themes/TemaPage.vue")),
   "tema-3": defineAsyncComponent(() => import("@/components/themes/Tema3.vue")),
   "tema-4": defineAsyncComponent(() => import("@/components/themes/Tema4.vue")),
 };
@@ -3471,6 +3474,8 @@ const modalUi = {
 // ── Modal booleans
 const rsvpOpen = ref(false);
 const pageLoading = ref(true);
+// "scroll" (Tema 1: daftar section) vs "page" (Tema 2: editor per halaman)
+const isPageType = computed(() => isPageTheme(store.temaSlug));
 const pengaturanOpen = ref(false);
 const musikOpen = ref(false);
 const sectionEditOpen = ref(false);

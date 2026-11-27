@@ -1,0 +1,76 @@
+--- pm/PlayMoment/app/pages/edit-undangan/[slug].vue	2026-11-08 04:10:29.000000000 +0000
++++ work/app/pages/edit-undangan/[slug].vue	2026-11-27 02:09:14.643322814 +0000
+@@ -68,7 +68,7 @@
+     </header>
+ 
+     <!-- ══ SCROLLABLE BODY ══ -->
+-    <div class="ep-body">
++    <div v-if="!isPageType" class="ep-body">
+       <!-- ── INFO STRIP: Aktif Sampai ── -->
+       <div class="ep-info-strip">
+         <div class="ep-info-left">
+@@ -454,6 +454,9 @@
+     </div>
+     <!-- /ep-body -->
+ 
++    <!-- ══ EDITOR TIPE HALAMAN (Tema 2) ══ -->
++    <PageEditor v-else-if="!pageLoading" />
++
+     <!-- ══ PREVIEW MODE: dibuka di tab baru via /preview/[slug] ══ -->
+ 
+     <!-- ══════════════════════════════════════════════
+@@ -3248,6 +3251,7 @@
+ import { useCustomerIdentity } from "~/composables/useCustomerIdentity";
+ import { useKirimUndangan } from "~/composables/useKirimUndangan";
+ import { useColorMode } from "#imports";
++import { isPageTheme } from "~/config/editor-types";
+ 
+ const kirimOpen = ref(false);
+ const {
+@@ -3452,7 +3456,7 @@
+ // ── Tema component map
+ const temaMap = {
+   "tema-1": defineAsyncComponent(() => import("@/components/themes/Tema1.vue")),
+-  "tema-2": defineAsyncComponent(() => import("@/components/themes/Tema2.vue")),
++  "tema-2": defineAsyncComponent(() => import("@/components/themes/TemaPage.vue")),
+   "tema-3": defineAsyncComponent(() => import("@/components/themes/Tema3.vue")),
+   "tema-4": defineAsyncComponent(() => import("@/components/themes/Tema4.vue")),
+ };
+@@ -3471,6 +3475,8 @@
+ // ── Modal booleans
+ const rsvpOpen = ref(false);
+ const pageLoading = ref(true);
++// Tipe editor: "scroll" (Tema 1, daftar section) vs "page" (Tema 2, canvas per halaman)
++const isPageType = computed(() => isPageTheme(store.temaSlug));
+ const pengaturanOpen = ref(false);
+ const musikOpen = ref(false);
+ const sectionEditOpen = ref(false);
+--- pm/PlayMoment/app/pages/preview-tema/[slug].vue	2026-11-08 04:10:29.000000000 +0000
++++ work/app/pages/preview-tema/[slug].vue	2026-11-27 02:09:14.643682179 +0000
+@@ -109,7 +109,7 @@
+ // ── Map tema slug ke komponen ──
+ const THEME_MAP = {
+   tema1: defineAsyncComponent(() => import("@/components/themes/Tema1.vue")),
+-  tema2: defineAsyncComponent(() => import("@/components/themes/Tema2.vue")),
++  tema2: defineAsyncComponent(() => import("@/components/themes/TemaPage.vue")),
+ };
+ 
+ const currentThemeComponent = computed(() => {
+--- pm/PlayMoment/app/pages/preview/[slug].vue	2026-11-08 04:10:29.000000000 +0000
++++ work/app/pages/preview/[slug].vue	2026-11-27 02:09:14.643554486 +0000
+@@ -106,13 +106,13 @@
+ });
+ 
+ import Tema1 from "@/components/themes/Tema1.vue";
+-import Tema2 from "@/components/themes/Tema2.vue";
++import TemaPage from "@/components/themes/TemaPage.vue";
+ import Tema3 from "@/components/themes/Tema3.vue";
+ import Tema4 from "@/components/themes/Tema4.vue";
+ 
+ const THEME_MAP = {
+   "tema-1": Tema1,
+-  "tema-2": Tema2,
++  "tema-2": TemaPage,
+   "tema-3": Tema3,
+   "tema-4": Tema4,
+ };

@@ -109,7 +109,7 @@ const temaInfo = computed(() => allThemes.find(t => t.slug === temaSlug.value) |
 // ── Map tema slug ke komponen ──
 const THEME_MAP = {
   tema1: defineAsyncComponent(() => import("@/components/themes/Tema1.vue")),
-  tema2: defineAsyncComponent(() => import("@/components/themes/Tema2.vue")),
+  tema2: defineAsyncComponent(() => import("@/components/themes/TemaPage.vue")),
 };
 
 const currentThemeComponent = computed(() => {

@@ -1,0 +1,22 @@
+Update v4 — kanvas penuh lebar & tinggi ala mobile (tanpa space kiri-kanan)
+
+1. Ekstrak zip ini ke ROOT proyek (folder yang ada package.json dan folder app/). Timpa semua.
+2. Hapus file sisa (kalau ada): app/utils/page-editor-extensions.js
+3. npm run dev, buka undangan yang temanya tema-2 (Sage Garden).
+
+Yang baru:
+- Editor: daftar halaman (drag urutan, toggle tampil/sembunyi, tombol Edit) -> Edit membuka toolbar
+  [panel lengkung | nama halaman | gambar latar | duplikat | hapus] + kanvas halaman.
+- Panel lengkung (arch) di belakang konten, warna bisa diganti.
+- Elemen Foto: bentuk oval/lengkung/lingkaran/kotak, bingkai emas (CSS) atau PNG bingkai ornamen sendiri (URL), upload ke bucket foto-assets.
+- Font Marcellus ditambahkan, dan halaman default (Opening, Quotes, dst) mengikuti gaya screenshot.
+- Halaman yang di-toggle off tidak tampil ke tamu.
+Data lama tetap kompatibel (field baru opsional). Undangan yang sudah punya halaman default lama tidak otomatis berubah
+— hapus section "pages" / buat undangan baru untuk melihat default baru.
+
+v4: kanvas halaman kini 100% lebar (tanpa margin/letterbox), tinggi menyesuaikan layar (editor maks 70% tinggi layar),
+panel lengkung full-width. Tamu: penuh layar, di desktop dibatasi 480px di tengah. Konten yang melebihi tinggi bisa di-scroll di dalam halaman.
+
+v5: sudut kanvas dibuat rounded (editor 22px; tamu di layar lebar 24px). Ubah di .pe-stage-wrap (PageEditor.vue) / .tp-wrap (TemaPage.vue).
+
+v6: tinggi kanvas editor = proporsi layar HP (tinggi/lebar viewport, batas 1.6–2.1), di PageEditor.vue (phoneRatio).

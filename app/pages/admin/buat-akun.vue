@@ -54,7 +54,7 @@
           </div>
 
           <!-- Paket -->
-          <p class="ba-section">Paket & Kuota</p>
+          <p class="ba-section">Paket & Credit</p>
           <div class="ba-paket-grid">
             <div v-for="p in paketOptions" :key="p.nama" class="ba-paket-card" :class="{ selected: form.paket===p.nama }" @click="form.paket=p.nama">
               <p class="ba-paket-name">{{ p.nama }}</p>
@@ -65,9 +65,9 @@
           </div>
           <div class="adm-form-grid" style="margin-top:14px">
             <div class="adm-field">
-              <label class="adm-label">Kuota Undangan</label>
-              <input class="adm-input" v-model.number="form.maxUndangan" type="number" min="1" max="99" />
-              <span class="td-sub">Default {{ form.paket }}: {{ defaultMaxUndangan }}</span>
+              <label class="adm-label">Credit Point Awal</label>
+              <input class="adm-input" v-model.number="form.credits" type="number" min="0" />
+              <span class="td-sub">Default {{ form.paket }}: {{ defaultCredits }} credit · {{ getCreditCost(form.paket) }} credit/undangan</span>
             </div>
             <div class="adm-field">
               <label class="adm-label">Status Awal</label>
@@ -118,8 +118,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useAccountStore } from '~/stores/useAccountStore'
-import { getDefaultMaxUndangan } from '~/utils/customer-quota'
-import { getAdminPaketCards } from '~/config/paket'
+import { getAdminPaketCards, getCreditCost, getPackageCredits } from '~/config/paket'
 
 definePageMeta({ layout: 'admin' })
 
@@ -129,13 +128,13 @@ const showPass = ref(false); const showKonfirmasi = ref(false)
 const loading = ref(false); const successMsg = ref('')
 const invoiceLinkMsg = ref(''); const invoiceLinkOk = ref(false)
 
-const defaultForm = () => ({ nama:'', email:'', hp:'', password:'', konfirmasi:'', paket:'Premium', maxUndangan:getDefaultMaxUndangan('Premium'), status:'aktif', catatan:'', invoiceCode:'' })
+const defaultForm = () => ({ nama:'', email:'', hp:'', password:'', konfirmasi:'', paket:'Premium', credits:getPackageCredits('Premium'), status:'aktif', catatan:'', invoiceCode:'' })
 const form = ref(defaultForm())
 const errors = ref({ nama:'', email:'', hp:'', password:'', konfirmasi:'' })
-const defaultMaxUndangan = computed(() => getDefaultMaxUndangan(form.value.paket))
+const defaultCredits = computed(() => getPackageCredits(form.value.paket))
 const akunBaru = computed(() => accountStore.customers.slice(0,5))
 
-watch(() => form.value.paket, (paket) => { form.value.maxUndangan = getDefaultMaxUndangan(paket) })
+watch(() => form.value.paket, (paket) => { form.value.credits = getPackageCredits(paket) })
 
 const resetForm = () => { form.value=defaultForm(); errors.value={nama:'',email:'',hp:'',password:'',konfirmasi:''}; invoiceLinkMsg.value=''; invoiceLinkOk.value=false }
 
@@ -154,7 +153,7 @@ const validate = () => {
 const submit = async () => {
   if(!validate()) return
   loading.value=true
-  const customer = await accountStore.addCustomer({ nama:form.value.nama, email:form.value.email, hp:form.value.hp, paket:form.value.paket, maxUndangan:form.value.maxUndangan, password:form.value.password, status:form.value.status })
+  const customer = await accountStore.addCustomer({ nama:form.value.nama, email:form.value.email, hp:form.value.hp, paket:form.value.paket, credits:Math.max(0, Math.trunc(Number(form.value.credits)||0)), password:form.value.password, status:form.value.status })
   const code = form.value.invoiceCode?.trim()
   if(code && customer) {
     const linked = await accountStore.linkOrderToCustomerByInvoice(code, customer.id)

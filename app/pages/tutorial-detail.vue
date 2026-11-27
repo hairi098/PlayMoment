@@ -20,6 +20,8 @@
           </div>
         </div>
 
+        <CreditBadge />
+
         <div class="avatar-wrap" @click.stop="toggleDropdown">
           <button class="topbar-avatar" aria-label="Profil">
             <span class="topbar-avatar-initials">{{ getInitials(user?.name) }}</span>

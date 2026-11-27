@@ -8,7 +8,12 @@ import {
   DEFAULT_CUSTOMER_PASSWORD,
   normalizeEmail,
 } from "~/utils/auth-credentials";
-import { formatRupiahNumber, getPackageDays } from "~/config/paket";
+import {
+  formatRupiahNumber,
+  getCreditCost,
+  getPackageCredits,
+  getPackageDays,
+} from "~/config/paket";
 import { calculatePromoDiscount } from "~/utils/promo";
 import { adminQuery } from "~/utils/admin-query";
 
@@ -26,6 +31,7 @@ const resolveDays = (paket) => getPackageDays(paket);
 export const useAccountStore = defineStore("account", {
   state: () => ({
     currentUser: null,
+    lastInvitationError: "",
     customers: [],
     orders: [],
     invitations: [],
@@ -121,16 +127,20 @@ export const useAccountStore = defineStore("account", {
         customer = state.currentUser;
       }
       if (!customer) return { used: 0, max: 0, remaining: 0, canCreate: false };
-      const max = customer.maxUndangan ?? getDefaultMaxUndangan(customer.paket);
+      // Sistem credit: jumlah undangan yang bisa dibuat = saldo credit ÷ biaya per undangan paket.
+      const credits = Math.max(0, Number(customer.credits ?? 0));
+      const cost = getCreditCost(customer.paket);
       const used = state.invitations.filter(
         (i) => String(i.customerId) === String(customer.id),
       ).length;
-      const remaining = Math.max(0, max - used);
+      const remaining = Math.floor(credits / cost);
       return {
         used,
-        max,
+        max: used + remaining,
         remaining,
-        canCreate: customer.status === "aktif" && remaining > 0,
+        credits,
+        cost,
+        canCreate: customer.status === "aktif" && credits >= cost,
       };
     },
   },
@@ -177,6 +187,12 @@ export const useAccountStore = defineStore("account", {
           order: { column: "id", ascending: true },
         });
         this.customers = (data || []).map(mapCustomer);
+        // Samakan saldo credit di sesi customer yang sedang login
+        const me = this.currentUser;
+        if (me?.role === "customer") {
+          const mine = this.customers.find((c) => String(c.id) === String(me.id));
+          if (mine) this.currentUser = { ...me, credits: mine.credits };
+        }
       } catch (err) {
         console.error("loadCustomers:", err);
       }
@@ -353,6 +369,16 @@ export const useAccountStore = defineStore("account", {
         const data = await adminQuery({ table: "customers", operation: "insert", data: row, single: true, notify: opts.notify ? "Customer berhasil ditambahkan" : undefined });
         const customer = mapCustomer(data);
         this.customers.push(customer);
+        // Credit awal sesuai paket (confirmOrder mengatur grant sendiri → opts.skipCredits)
+        if (!opts.skipCredits) {
+          const initial = payload.credits ?? getPackageCredits(payload.paket);
+          if (initial > 0) {
+            await this.grantCredits(customer.id, initial, {
+              ref: `init:${customer.id}`,
+              note: `Credit awal paket ${payload.paket}`,
+            });
+          }
+        }
         return customer;
       } catch (err) {
         console.error("addCustomer:", err);
@@ -466,7 +492,7 @@ export const useAccountStore = defineStore("account", {
       }
     },
 
-    async confirmOrder(orderId, { maxUndangan, catatanAdmin, password }) {
+    async confirmOrder(orderId, { maxUndangan, credits, catatanAdmin, password }) {
       const order = this.orders.find((o) => o.id === orderId);
       if (!order) return { ok: false, message: "Pesanan tidak ditemukan." };
 
@@ -491,7 +517,7 @@ export const useAccountStore = defineStore("account", {
           paket: order.paket,
           maxUndangan: maxUndangan ?? 1,
           status: "aktif",
-        });
+        }, { skipCredits: true });
         if (!customer) {
           return { ok: false, message: "Gagal membuat akun customer." };
         }
@@ -509,6 +535,21 @@ export const useAccountStore = defineStore("account", {
           ...(password ? { password } : {}),
           expiryDate: newExpiryDate, // set manual agar tidak override dari paket saja
         });
+      }
+
+      // Tambah credit sesuai paket. ref = order → konfirmasi ulang tidak menambah dua kali.
+      const paketCredits = credits ?? getPackageCredits(order.paket);
+      if (paketCredits > 0) {
+        const granted = await this.grantCredits(customer.id, paketCredits, {
+          ref: `order:${order.id}`,
+          note: `Paket ${order.paket} (invoice ${order.invoiceCode || order.id})`,
+        });
+        if (!granted.ok) {
+          return {
+            ok: false,
+            message: `Gagal menambah credit: ${granted.message}. Coba konfirmasi lagi.`,
+          };
+        }
       }
 
       const patch = {
@@ -758,15 +799,51 @@ export const useAccountStore = defineStore("account", {
         editor_data: payload.editorData ?? {},
       };
 
-      try {
-        const data = await adminQuery({ table: "invitations", operation: "insert", data: row, single: true, notify: "Undangan berhasil dibuat" });
-        const invitation = mapInvitation(data);
-        this.invitations.unshift(invitation);
-        return invitation;
-      } catch (err) {
-        console.error("addInvitation:", err);
+      // Potong credit + simpan undangan di server (atomik). Credit balik otomatis kalau gagal simpan.
+      this.lastInvitationError = "";
+      const res = await callCreditsApi(
+        "create-invitation",
+        { row, customerId: customer.id },
+        this.currentUser?.sessionToken,
+      );
+      if (!res.ok) {
+        console.error("addInvitation:", res.message);
+        this.lastInvitationError = res.message || "Gagal membuat undangan.";
+        useNotify().error("Gagal membuat undangan", {
+          description: this.lastInvitationError,
+        });
         return null;
       }
+
+      this._syncCredits(customer.id, res.credits);
+      const invitation = mapInvitation(res.data);
+      this.invitations.unshift(invitation);
+      useNotify().success("Undangan berhasil dibuat", {
+        description: `${res.cost} credit terpakai · sisa ${res.credits} credit`,
+      });
+      return invitation;
+    },
+
+    // ── CREDIT ──────────────────────────────────────────────────
+    _syncCredits(customerId, credits) {
+      if (typeof credits !== "number") return;
+      const c = this.customers.find((c) => String(c.id) === String(customerId));
+      if (c) c.credits = credits;
+      const me = this.currentUser;
+      if (me?.role === "customer" && String(me.id) === String(customerId)) {
+        this.currentUser = { ...me, credits };
+      }
+    },
+
+    /** Admin: tambah (type 'grant') atau koreksi ± (type 'adjust') credit customer. */
+    async grantCredits(customerId, amount, { type = "grant", ref = null, note = "" } = {}) {
+      const res = await callCreditsApi(
+        "grant",
+        { customerId, amount, type, ref, note },
+        this.currentUser?.sessionToken,
+      );
+      if (res.ok) this._syncCredits(customerId, res.credits);
+      return res;
     },
 
     async updateInvitation(id, patch) {
@@ -958,6 +1035,7 @@ function mapCustomer(row) {
     hp: row.hp,
     paket: row.paket,
     maxUndangan: row.max_undangan,
+    credits: row.credits ?? 0,
     status: row.status,
     color: row.color,
     expiryDate: row.expiry_date,
@@ -1069,4 +1147,22 @@ function toDbInvitationPatch(patch) {
     row[map[k] ?? k] = v;
   }
   return row;
+}
+
+// ── HELPER: panggil /api/credits/<action> (server) ──────────────
+async function callCreditsApi(action, body, token) {
+  try {
+    return await $fetch(`/api/credits/${action}`, {
+      method: "POST",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body,
+    });
+  } catch (err) {
+    return {
+      ok: false,
+      status: err?.statusCode || err?.response?.status,
+      message:
+        err?.data?.message || err?.message || "Tidak bisa terhubung ke server.",
+    };
+  }
 }

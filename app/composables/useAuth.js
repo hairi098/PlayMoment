@@ -14,11 +14,11 @@ export const useAuth = () => {
   const isLoggedIn = computed(() => isCustomer.value || isAdmin.value);
 
   /** Untuk aksi pilih/gunakan tema — preview tetap boleh tanpa login */
-  const requireCustomerForSelect = (returnTo) => {
+  const requireCustomerForSelect = (returnTo, reason = "pilih-tema") => {
     // Kalau sudah login (customer atau admin), langsung boleh
     if (isLoggedIn.value) return true;
 
-    // Belum login → redirect ke login dengan info mau kemana setelah login
+    // Belum login → arahkan ke halaman daftar, setelah daftar lanjut ke tujuan
     let redirect = "/tema";
     if (typeof returnTo === "string" && returnTo) {
       redirect = returnTo;
@@ -31,10 +31,10 @@ export const useAuth = () => {
     }
 
     navigateTo({
-      path: "/login",
+      path: "/daftar",
       query: {
         redirect,
-        reason: "pilih-tema",
+        reason,
       },
     });
     return false;
