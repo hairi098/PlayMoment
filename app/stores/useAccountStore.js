@@ -608,6 +608,7 @@ export const useAccountStore = defineStore("account", {
         hadir: isHadir,
         jumlah: parseInt(rsvpData.jumlah) || 1,
         ucapan: rsvpData.comment || rsvpData.ucapan || "",
+        ...(rsvpData.grup ? { grup: rsvpData.grup } : {}),
       };
 
       if (index !== -1) {

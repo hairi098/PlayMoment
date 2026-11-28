@@ -9,20 +9,21 @@ import { useUndanganStore } from "~/stores/useUndanganStore";
 import PageStage from "~/components/themes/PageStage.vue";
 import MediaPicker from "~/components/editor/MediaPicker.vue";
 import {
-  PAGE_STAGE, PAGE_FONTS, PAGE_FONT_URL, IMAGE_SHAPES, ENTRANCES, LOOPS, BTN_ACTIONS, safeUrl, tokenKey, hasToken
+  PAGE_STAGE, PAGE_FONTS, PAGE_FONT_URL, ANIMATE_CSS_URL, IMAGE_SHAPES, ENTRANCES, LOOPS, BTN_ACTIONS, safeUrl, tokenKey, hasToken
 } from "~/utils/page-defaults";
 
-useHead({ link: [{ rel: "stylesheet", href: PAGE_FONT_URL }] });
+useHead({ link: [{ rel: "stylesheet", href: PAGE_FONT_URL }, ...(ANIMATE_CSS_URL ? [{ rel: "stylesheet", href: ANIMATE_CSS_URL }] : [])] });
 
 // Mode user (default): tema bawaan, user hanya mengganti DATA (teks yang terikat data, foto, link tombol).
 // Mode desainer (designer=true): kontrol lengkap untuk membuat/mengubah tema (tambah elemen, dekorasi, panel, animasi).
 const props = defineProps({ designer: { type: Boolean, default: false } });
+const emit = defineEmits(["musik"]); // minta induk (halaman editor) membuka pilihan Music
 const store = useUndanganStore();
 
 const {
   pages, ensurePages, addPage, duplicatePage, removePage, renamePage, setPageBg,
   setPagePanel, setPageVisible, reorderPage,
-  addElement, addImage, addButton, addLayer, updateElement, removeElement, moveElement
+  addElement, addImage, addButton, addRsvp, addLayer, updateElement, removeElement, moveElement
 } = usePageEditor();
 
 onMounted(() => {
@@ -79,13 +80,14 @@ const editLocked = ref(false); // teks gabungan beberapa data → tidak diedit d
 const editBindImg = ref("");
 const editBindUrl = ref("");
 const editingId = ref(null);
-const editingType = ref("text"); // text | image | button | layer
+const editingType = ref("text"); // text | image | button | layer | rsvp
 const draft = reactive({
   text: "", font: PAGE_FONTS[3].value, size: 16, color: "#000000", bold: false, italic: false, align: "center", mt: 0,
   src: "", shape: "oval", w: 190, h: 250, frame: "ornate", frameUrl: "",
   label: "", action: "next", url: "", bg: "#96483e",
   lh: "left", lv: "top", x: 0, y: 0, lw: 50, rot: 0, flip: false, front: true, loop: "",
-  anim: "", delay: 0
+  doneText: "", showWishes: true,
+  anim: "", delay: 0, dur: 1
 });
 
 function openEdit(id) {
@@ -97,6 +99,7 @@ function openEdit(id) {
   draft.mt = el.mt || 0;
   draft.anim = el.anim || "";
   draft.delay = el.delay || 0;
+  draft.dur = el.dur || 1;
   const boundKey = (txt) => { const k = tokenKey(txt); return !props.designer && k && k !== "nama_tamu" ? k : ""; };
   if (el.type === "image") {
     editBindImg.value = el.bind || "";
@@ -109,6 +112,8 @@ function openEdit(id) {
       action: el.action || "next", font: el.font, size: el.size, color: el.color, bg: el.bg,
       url: el.bindUrl ? String(store.undangan[el.bindUrl] ?? "") : el.url || ""
     });
+  } else if (el.type === "rsvp") {
+    Object.assign(draft, { label: el.label || "Kirim RSVP", doneText: el.doneText || "", showWishes: el.showWishes !== false, font: el.font, color: el.color, bg: el.bg });
   } else if (el.type === "layer") {
     Object.assign(draft, { src: el.src || "", lh: el.h || "left", lv: el.v || "top", x: el.x || 0, y: el.y || 0, lw: el.w || 50, rot: el.rot || 0, flip: !!el.flip, front: el.front !== false, loop: el.loop || "" });
   } else {
@@ -129,26 +134,37 @@ function save() {
   const D = store.undangan;
   const goodUrl = (u) => (safeUrl(u) ? String(u).trim() : "");
 
-  // ── MODE USER: hanya data ──
+  const animPatch = { anim: draft.anim, delay: clamp(draft.delay, 0, 10, 0), dur: clamp(draft.dur, 0.2, 5, 1) };
+
+  // ── RSVP (user & desainer): teks tombol, pesan sukses, daftar ucapan ──
+  if (t === "rsvp") {
+    const patch = { label: draft.label || "Kirim RSVP", doneText: draft.doneText, showWishes: !!draft.showWishes, ...animPatch };
+    if (props.designer) Object.assign(patch, { font: draft.font, color: draft.color, bg: draft.bg, mt: clamp(draft.mt, 0, 300, 0) });
+    updateElement(current.value, editingId.value, patch);
+    modalOpen.value = false;
+    return;
+  }
+
+  // ── MODE USER: hanya data (+ animasi) ──
   if (!props.designer) {
     if (t === "text") {
-      if (editBound.value) D[editBound.value] = draft.text;
-      else updateElement(current.value, editingId.value, { text: draft.text });
+      if (editBound.value) { D[editBound.value] = draft.text; updateElement(current.value, editingId.value, animPatch); }
+      else updateElement(current.value, editingId.value, { text: draft.text, ...animPatch });
     } else if (t === "image") {
-      if (editBindImg.value) D[editBindImg.value] = goodUrl(draft.src);
-      else updateElement(current.value, editingId.value, { src: goodUrl(draft.src) });
+      if (editBindImg.value) { D[editBindImg.value] = goodUrl(draft.src); updateElement(current.value, editingId.value, animPatch); }
+      else updateElement(current.value, editingId.value, { src: goodUrl(draft.src), ...animPatch });
     } else if (t === "button") {
-      const patch = {};
+      const patch = { ...animPatch };
       if (editBound.value) D[editBound.value] = draft.label; else patch.label = draft.label || "Tombol";
       if (draft.action !== "next") { if (editBindUrl.value) D[editBindUrl.value] = draft.url; else patch.url = draft.url; }
-      if (Object.keys(patch).length) updateElement(current.value, editingId.value, patch);
+      updateElement(current.value, editingId.value, patch);
     }
     modalOpen.value = false;
     return;
   }
 
   // ── MODE DESAINER ──
-  const common = { mt: clamp(draft.mt, 0, 300, 0), anim: draft.anim, delay: clamp(draft.delay, 0, 10, 0) };
+  const common = { mt: clamp(draft.mt, 0, 300, 0), ...animPatch };
   let patch;
   if (t === "image") {
     if (editBindImg.value) D[editBindImg.value] = goodUrl(draft.src);
@@ -159,7 +175,7 @@ function save() {
   } else if (t === "layer") {
     patch = {
       src: goodUrl(draft.src), h: draft.lh, v: draft.lv, x: Number(draft.x) || 0, y: Number(draft.y) || 0, w: clamp(draft.lw, 5, 200, 50),
-      rot: clamp(draft.rot, -180, 180, 0) * 1, flip: draft.flip, loop: draft.loop, anim: draft.anim, delay: common.delay
+      rot: clamp(draft.rot, -180, 180, 0) * 1, flip: draft.flip, loop: draft.loop, ...animPatch
     };
   } else {
     patch = { text: draft.text, font: draft.font, size: clamp(draft.size, 8, 120, 16), color: draft.color, bold: draft.bold, italic: draft.italic, align: draft.align, ...common };
@@ -171,12 +187,16 @@ function del() { removeElement(current.value, editingId.value); modalOpen.value 
 function moveEl(dir) { moveElement(current.value, editingId.value, dir); }
 function onLayerMove({ id, x, y }) { updateElement(current.value, id, { x, y }); }
 
+// contoh animasi di modal (animate.css) — tombol "Putar" memutar ulang
+const demoKey = ref(0);
+const demoCls = computed(() => (draft.anim && /^[A-Za-z]{2,32}$/.test(draft.anim) ? ["animate__animated", `animate__${draft.anim}`] : []));
+
 const aligns = [
   { v: "left", icon: "i-lucide-align-left" },
   { v: "center", icon: "i-lucide-align-center" },
   { v: "right", icon: "i-lucide-align-right" }
 ];
-const modalTitle = computed(() => ({ text: "Edit Teks", image: "Ganti Foto", button: "Edit Tombol", layer: "Edit Dekorasi" }[editingType.value]));
+const modalTitle = computed(() => ({ text: "Edit Teks", image: "Ganti Foto", button: "Edit Tombol", layer: "Edit Dekorasi", rsvp: "Pengaturan RSVP" }[editingType.value]));
 const modalUi = {
   content: "w-[calc(100vw-32px)] max-w-[450px] mx-auto my-auto max-h-[85vh] rounded-2xl !bg-white !text-slate-900 ring-1 ring-slate-200",
   title: "!text-[#1a2e45] dark:!text-[#1a2e45]"
@@ -198,6 +218,13 @@ function togglePanel() {
 
 <template>
   <div ref="rootRef" class="pe-root">
+    <!-- MUSIK: pilih lagu di editor → tombol musik muncul di preview & undangan -->
+    <div class="pe-music">
+      <UIcon name="i-lucide-music" class="pe-music-ico" />
+      <span class="pe-music-name">{{ store.musikAktif === false ? "Musik nonaktif" : store.undangan.musik || "Belum ada lagu dipilih" }}</span>
+      <button type="button" class="pe-edit" @click="emit('musik')">Pilih Musik</button>
+    </div>
+
     <div
       v-for="(p, i) in pages"
       :key="p.id"
@@ -249,6 +276,7 @@ function togglePanel() {
           <button type="button" class="pe-btn" @click="onAdd(addImage)"><UIcon name="i-lucide-image-plus" /> Foto</button>
           <button type="button" class="pe-btn" @click="onAdd(addButton)"><UIcon name="i-lucide-mouse-pointer-click" /> Tombol</button>
           <button type="button" class="pe-btn" @click="onAdd(addLayer)"><UIcon name="i-lucide-flower-2" /> Dekorasi</button>
+          <button type="button" class="pe-btn" @click="onAdd(addRsvp)"><UIcon name="i-lucide-mail-check" /> RSVP</button>
         </div>
         <div v-if="designer" class="pe-bar pe-bar2">
           <label class="pe-clr" title="Warna latar">
@@ -283,8 +311,33 @@ function togglePanel() {
     <UModal v-model:open="modalOpen" :title="modalTitle" :ui="modalUi">
       <template #body>
         <div class="em-body">
+          <!-- RSVP (user & desainer) -->
+          <template v-if="editingType === 'rsvp'">
+            <input v-model="draft.label" class="em-input" placeholder="Teks tombol kirim" maxlength="30" />
+            <input v-model="draft.doneText" class="em-input" placeholder="Pesan setelah terkirim" maxlength="120" />
+            <label class="em-lbl"><input v-model="draft.showWishes" type="checkbox" /> Tampilkan daftar ucapan tamu</label>
+            <label class="em-lbl">
+              <input type="checkbox" :checked="store.rsvpAktif !== false" @change="store.setRsvpAktif($event.target.checked)" />
+              RSVP aktif (nonaktif = halaman RSVP disembunyikan dari tamu)
+            </label>
+            <p class="em-hint">Kolom isian (nama, kehadiran, jumlah, ucapan) mengikuti pengaturan RSVP undangan. Jawaban tamu masuk ke daftar tamu.</p>
+            <template v-if="designer">
+              <div class="em-row">
+                <label class="em-lbl">Warna tombol <input v-model="draft.bg" type="color" class="em-color" /></label>
+                <label class="em-lbl em-right">Warna teks <input v-model="draft.color" type="color" class="em-color" /></label>
+              </div>
+              <div class="em-row">
+                <label class="em-lbl">Jarak atas <input v-model.number="draft.mt" type="number" min="0" max="300" class="em-num" /> px</label>
+                <span class="em-right em-move">
+                  <button type="button" class="em-tog" title="Naikkan" @click="moveEl(-1)"><UIcon name="i-lucide-arrow-up" /></button>
+                  <button type="button" class="em-tog" title="Turunkan" @click="moveEl(1)"><UIcon name="i-lucide-arrow-down" /></button>
+                </span>
+              </div>
+            </template>
+          </template>
+
           <!-- MODE USER: hanya mengganti data -->
-          <template v-if="!designer">
+          <template v-else-if="!designer">
             <template v-if="editingType === 'text'">
               <p v-if="editLocked" class="em-hint">Teks ini gabungan beberapa data (mis. nama &amp; tanggal). Ubah lewat form Data undangan.</p>
               <textarea v-else v-model="draft.text" class="em-text" rows="5" placeholder="Ketik teks…" />
@@ -400,6 +453,10 @@ function togglePanel() {
             </label>
             <label class="em-lbl em-right">Delay <input v-model.number="draft.delay" type="number" min="0" max="10" step="0.1" class="em-num" /> dtk</label>
           </div>
+          <div class="em-row">
+            <label class="em-lbl">Durasi <input v-model.number="draft.dur" type="number" min="0.2" max="5" step="0.1" class="em-num" /> dtk</label>
+            <span class="em-right em-demo"><span :key="demoKey" class="em-demo-box" :class="demoCls" :style="{ '--animate-duration': (draft.dur || 1) + 's' }">Contoh</span><button type="button" class="em-tog" title="Putar animasi" @click="demoKey++"><UIcon name="i-lucide-play" /></button></span>
+          </div>
           <div v-if="editingType !== 'layer'" class="em-row">
             <label class="em-lbl">Jarak atas <input v-model.number="draft.mt" type="number" min="0" max="300" class="em-num" /> px</label>
             <span class="em-right em-move">
@@ -407,6 +464,21 @@ function togglePanel() {
               <button type="button" class="em-tog" title="Turunkan" @click="moveEl(1)"><UIcon name="i-lucide-arrow-down" /></button>
             </span>
           </div>
+          </template>
+
+          <!-- ANIMASI (animate.css) untuk mode user & RSVP -->
+          <template v-if="editingType === 'rsvp' || !designer">
+            <div class="em-sep" />
+            <div class="em-row">
+              <label class="em-lbl">Animasi
+                <select v-model="draft.anim" class="em-select"><option v-for="a in ENTRANCES" :key="a.value" :value="a.value">{{ a.label }}</option></select>
+              </label>
+              <label class="em-lbl em-right">Delay <input v-model.number="draft.delay" type="number" min="0" max="10" step="0.1" class="em-num" /> dtk</label>
+            </div>
+            <div class="em-row">
+              <label class="em-lbl">Durasi <input v-model.number="draft.dur" type="number" min="0.2" max="5" step="0.1" class="em-num" /> dtk</label>
+              <span class="em-right em-demo"><span :key="demoKey" class="em-demo-box" :class="demoCls" :style="{ '--animate-duration': (draft.dur || 1) + 's' }">Contoh</span><button type="button" class="em-tog" title="Putar animasi" @click="demoKey++"><UIcon name="i-lucide-play" /></button></span>
+            </div>
           </template>
         </div>
       </template>
@@ -434,6 +506,9 @@ function togglePanel() {
 .pe-tog span { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 999px; background: #fff; transition: transform .15s; }
 .pe-tog.on { background: #0d9488; }
 .pe-tog.on span { transform: translateX(18px); }
+.pe-music { margin: 0 12px; display: flex; align-items: center; gap: 10px; background: #fff; border-radius: 12px; padding: 8px 12px; box-shadow: 0 1px 6px rgba(26, 46, 69, .1); }
+.pe-music-ico { color: #b76b78; flex-shrink: 0; }
+.pe-music-name { flex: 1; min-width: 0; font-size: 13px; color: #1a2e45; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pe-edit { height: 34px; min-width: 58px; padding: 0 12px; border-radius: 8px; background: #cbd1d9; color: #1a2e45; font-size: 14px; flex-shrink: 0; }
 .pe-edit.on { box-shadow: 0 0 0 2px #aab3be; }
 
@@ -466,6 +541,8 @@ function togglePanel() {
 .em-media { display: inline-flex; align-items: center; gap: 6px; height: 38px; padding: 0 14px; border-radius: 10px; background: #0d9488; color: #fff; font-size: 13px; font-weight: 600; flex-shrink: 0; }
 .em-thumb { width: 44px; height: 44px; object-fit: contain; border-radius: 8px; border: 1px solid #cbd5e1; background: repeating-conic-gradient(#eef0f3 0% 25%, #fff 0% 50%) 50% / 10px 10px; }
 .em-hint { font-size: 12px; color: #64748b; margin: -6px 0 0; }
+.em-demo { display: inline-flex; align-items: center; gap: 8px; }
+.em-demo-box { display: inline-block; font-size: 12px; font-weight: 600; color: #fff; background: #b76b78; border-radius: 999px; padding: 6px 12px; }
 .em-sep { height: 1px; background: #e2e8f0; }
 .em-lbl { display: flex; align-items: center; gap: 8px; font-size: 14px; }
 .em-right { margin-left: auto; }

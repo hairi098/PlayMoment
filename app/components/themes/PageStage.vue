@@ -3,7 +3,8 @@
 // Render satu halaman: latar + dekorasi (layer) + panel (lengkung) + elemen (teks, foto berbingkai, tombol).
 // Dipakai bersama oleh editor & tampilan tamu supaya hasilnya identik. Teks dirender sebagai teks biasa (aman, tanpa v-html).
 import { computed, ref, onMounted, onBeforeUnmount } from "vue";
-import { PAGE_STAGE, applyTokens, safeUrl, hexA, buttonHref } from "~/utils/page-defaults";
+import { PAGE_STAGE, applyTokens, safeUrl, hexA, buttonHref, ANIM_NAME, CUSTOM_LOOPS } from "~/utils/page-defaults";
+import PageRsvp from "~/components/themes/PageRsvp.vue";
 
 const props = defineProps({
   page: { type: Object, required: true },
@@ -68,11 +69,16 @@ const flowStyle = computed(() =>
   hasPanel.value ? { padding: `${PANEL_TOP + 48}px 34px 32px` } : { padding: "32px 30px" }
 );
 
-// ── animasi masuk ──
+// ── animasi masuk (animate.css) ──
+// Class: animate__animated + animate__<nama>. Delay & durasi dipasang inline (durasi lewat --animate-duration).
+const animCls = (el) => (el.anim && animate.value && ANIM_NAME.test(el.anim) ? ["animate__animated", `animate__${el.anim}`] : []);
 function animStyle(el) {
-  return el.anim && animate.value
-    ? { animationName: `ps-${el.anim}`, animationDelay: `${Number(el.delay) || 0}s`, animationDuration: "1s", animationFillMode: "both", animationPlayState: props.active ? "running" : "paused" }
-    : {};
+  if (!el.anim || !animate.value) return {};
+  return {
+    animationDelay: `${Number(el.delay) || 0}s`,
+    "--animate-duration": `${Number(el.dur) || 1}s`,
+    animationPlayState: props.active ? "running" : "paused" // ditahan sampai halaman terlihat
+  };
 }
 
 // ── teks ──
@@ -119,6 +125,7 @@ function frameStyle(el) {
 const photoStyle = (el) => ({ width: "100%", height: "100%", borderRadius: radius(el), overflow: "hidden", background: "rgba(0,0,0,.06)" });
 
 // ── tombol ──
+const rsvpWrapStyle = (el) => ({ marginTop: `${el.mt || 0}px`, ...animStyle(el) });
 const btnWrapStyle = (el) => ({ marginTop: `${el.mt || 0}px`, display: "flex", justifyContent: "center", ...animStyle(el) });
 const btnStyle = (el) => ({
   fontFamily: el.font,
@@ -153,12 +160,17 @@ function layerStyle(el) {
   st.transformOrigin = `${el.h === "right" ? "right" : el.h === "center" ? "center" : "left"} ${el.v === "bottom" ? "bottom" : "top"}`;
   return st;
 }
-const loopStyle = (el) =>
-  el.loop === "fly" && animate.value
-    ? { animationName: "ps-fly", animationDuration: "15s", animationTimingFunction: "linear", animationIterationCount: "infinite" }
-    : el.loop && animate.value
-    ? { animationName: `ps-${el.loop}`, animationDuration: el.loop === "float" ? "3.5s" : "3s", animationTimingFunction: "ease-in-out", animationIterationCount: "infinite", animationDirection: "alternate", transformOrigin: `${el.h === "right" ? "right" : "left"} ${el.v === "bottom" ? "bottom" : "top"}` }
-    : {};
+// Gerak berulang: gerakan khusus tema (wave/float/fly) atau animate.css infinite (pulse, swing, dst.)
+const isCustomLoop = (el) => CUSTOM_LOOPS.includes(el.loop);
+const loopCls = (el) =>
+  el.loop && animate.value && !isCustomLoop(el) && ANIM_NAME.test(el.loop) ? ["animate__animated", `animate__${el.loop}`, "animate__infinite"] : [];
+const loopStyle = (el) => {
+  if (!el.loop || !animate.value) return {};
+  if (el.loop === "fly") return { animationName: "ps-fly", animationDuration: "15s", animationTimingFunction: "linear", animationIterationCount: "infinite" };
+  if (isCustomLoop(el))
+    return { animationName: `ps-${el.loop}`, animationDuration: `${Number(el.loopDur) || (el.loop === "float" ? 3.5 : 3)}s`, animationTimingFunction: "ease-in-out", animationIterationCount: "infinite", animationDirection: "alternate", transformOrigin: `${el.h === "right" ? "right" : "left"} ${el.v === "bottom" ? "bottom" : "top"}` };
+  return { "--animate-duration": "2.5s" };
+};
 
 // Seret dekorasi dengan mouse di editor (sentuhan tetap untuk scroll; atur lewat modal)
 let drag = null;
@@ -202,7 +214,7 @@ const showBtn = (el) => props.editable || el.action === "next" || !!buttonHref(e
     <template v-for="el in layers" :key="el.id">
       <div v-if="hasSrc(el)" class="ps-layer" :class="{ editable: designer }" :style="layerStyle(el)"
         @pointerdown="onLayerDown(el, $event)" @pointermove="onLayerMove" @pointerup="onLayerUp(el)">
-        <div :style="animStyle(el)"><img :src="srcOf(el)" alt="" draggable="false" :style="loopStyle(el)" @error="$event.target.style.visibility = 'hidden'" /></div>
+        <div :class="animCls(el)" :style="animStyle(el)"><img :src="srcOf(el)" alt="" draggable="false" :class="loopCls(el)" :style="loopStyle(el)" @error="$event.target.style.visibility = 'hidden'" /></div>
       </div>
     </template>
 
@@ -213,7 +225,7 @@ const showBtn = (el) => props.editable || el.action === "next" || !!buttonHref(e
     <div class="ps-flow" :style="flowStyle">
       <div class="ps-inner">
         <template v-for="el in flowEls" :key="el.id">
-          <div v-if="el.type === 'image'" class="ps-img" :class="{ editable }" :style="imageWrapStyle(el)"
+          <div v-if="el.type === 'image'" class="ps-img" :class="[{ editable }, animCls(el)]" :style="imageWrapStyle(el)"
             @click="editable && emit('edit', el.id)">
             <div v-if="hasSrc(el) || editable" :style="frameStyle(el)">
               <div :style="photoStyle(el)">
@@ -223,10 +235,14 @@ const showBtn = (el) => props.editable || el.action === "next" || !!buttonHref(e
               <img v-if="safeUrl(el.frameUrl)" :src="safeUrl(el.frameUrl)" alt="" class="ps-frame-img" draggable="false" />
             </div>
           </div>
-          <div v-else-if="el.type === 'button' && showBtn(el)" class="ps-btnwrap" :class="{ editable }" :style="btnWrapStyle(el)">
+          <div v-else-if="el.type === 'rsvp'" class="ps-rsvp" :class="[{ editable }, animCls(el)]" :style="rsvpWrapStyle(el)"
+            @click="editable && emit('edit', el.id)">
+            <PageRsvp :el="el" :editable="editable" :guest="guest" />
+          </div>
+          <div v-else-if="el.type === 'button' && showBtn(el)" class="ps-btnwrap" :class="[{ editable }, animCls(el)]" :style="btnWrapStyle(el)">
             <button type="button" :style="btnStyle(el)" @click="onBtn(el)">{{ labelOf(el) }}</button>
           </div>
-          <div v-else-if="el.type !== 'button'" class="ps-el" :class="{ editable }" :style="textStyle(el)" @click="editable && emit('edit', el.id)">
+          <div v-else-if="el.type !== 'button'" class="ps-el" :class="[{ editable }, animCls(el)]" :style="textStyle(el)" @click="editable && emit('edit', el.id)">
             {{ shown(el) || "\u00A0" }}
           </div>
         </template>
@@ -248,8 +264,8 @@ const showBtn = (el) => props.editable || el.action === "next" || !!buttonHref(e
 .ps-inner > * { pointer-events: auto; }
 .ps-stage.auto .ps-flow { overflow: visible; min-height: auto; }
 .ps-el { line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
-.ps-el.editable, .ps-img.editable, .ps-btnwrap.editable { cursor: pointer; border-radius: 4px; outline: 1px dashed transparent; outline-offset: 4px; transition: outline-color .15s; }
-.ps-el.editable:hover, .ps-img.editable:hover, .ps-btnwrap.editable:hover { outline-color: rgba(47, 198, 218, .9); }
+.ps-el.editable, .ps-img.editable, .ps-btnwrap.editable, .ps-rsvp.editable { cursor: pointer; border-radius: 4px; outline: 1px dashed transparent; outline-offset: 4px; transition: outline-color .15s; }
+.ps-el.editable:hover, .ps-img.editable:hover, .ps-btnwrap.editable:hover, .ps-rsvp.editable:hover { outline-color: rgba(47, 198, 218, .9); }
 .ps-photo { width: 100%; height: 100%; object-fit: cover; display: block; }
 .ps-empty { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font: 600 13px sans-serif; color: rgba(0, 0, 0, .4); }
 .ps-frame-img { position: absolute; inset: -12%; width: 124%; height: 124%; max-width: none; object-fit: contain; pointer-events: none; }
@@ -259,13 +275,8 @@ const showBtn = (el) => props.editable || el.action === "next" || !!buttonHref(e
 .ps-layer.editable:hover { outline-color: rgba(47, 198, 218, .9); }
 </style>
 
-<!-- Keyframes HARUS global (tanpa scoped): nama animasi dipasang lewat inline style, scoped akan mengganti nama keyframes-nya -->
+<!-- Animasi masuk & loop standar memakai animate.css. Keyframes di bawah hanya gerakan khusus tema (wave/float/fly) — HARUS global (tanpa scoped) karena namanya dipasang lewat inline style -->
 <style>
-@keyframes ps-fadeInUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
-@keyframes ps-fadeInDown { from { opacity: 0; transform: translateY(-24px); } to { opacity: 1; transform: none; } }
-@keyframes ps-fadeInLeft { from { opacity: 0; transform: translateX(-36px); } to { opacity: 1; transform: none; } }
-@keyframes ps-fadeInRight { from { opacity: 0; transform: translateX(36px); } to { opacity: 1; transform: none; } }
-@keyframes ps-zoomIn { from { opacity: 0; transform: scale(.6); } to { opacity: 1; transform: none; } }
 @keyframes ps-wave-left { from { transform: rotate(-2deg); } to { transform: rotate(5deg); } }
 @keyframes ps-wave-right { from { transform: rotate(2deg); } to { transform: rotate(-5deg); } }
 @keyframes ps-fly { from { transform: translate(-120%, -60px); } to { transform: translate(420px, 60px); } }

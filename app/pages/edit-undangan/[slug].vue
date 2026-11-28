@@ -330,7 +330,7 @@
         </div>
       </div>
       <!-- ── EDITOR TIPE HALAMAN (Tema 2): menggantikan daftar section ── -->
-      <PageEditor v-else-if="!pageLoading" />
+      <PageEditor v-else-if="!pageLoading" @musik="musikOpen = true" />
 
       <!-- ── MUSIC FOOTER STRIP ── -->
       <div class="ep-music-strip">

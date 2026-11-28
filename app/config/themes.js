@@ -320,9 +320,9 @@ export const themeConfig = {
 export function getThemeSlugByName(nameOrSlug) {
   if (themeConfig[nameOrSlug]) return nameOrSlug;
   const found = Object.entries(themeConfig).find(
-    ([, cfg]) =>
-      cfg.name.toLowerCase() === String(nameOrSlug).toLowerCase() ||
-      cfg.label.toLowerCase() === String(nameOrSlug).toLowerCase(),
+    (entry) =>
+      entry[1].name.toLowerCase() === String(nameOrSlug).toLowerCase() ||
+      entry[1].label.toLowerCase() === String(nameOrSlug).toLowerCase(),
   );
   return found ? found[0] : "tema-1";
 }
