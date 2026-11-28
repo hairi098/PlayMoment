@@ -1,20 +1,28 @@
 <script setup>
 // components/editor/PageEditor.vue
-// Editor "tipe halaman" (Tema 2) — tampilan daftar halaman ala Satu Momen:
-//  baris halaman (drag, toggle tampil, tombol Edit) → klik Edit membuka toolbar + kanvas halaman.
-//  Klik teks / foto di kanvas → modal edit.
+// Editor "tipe halaman" (Tema 2): daftar halaman (drag, toggle, Edit) → toolbar + kanvas.
+// Klik elemen di kanvas → modal edit. Semua foto WAJIB dipilih dari Media (MediaPicker).
 import { ref, reactive, computed, watch, onMounted } from "vue";
 import { useElementSize } from "@vueuse/core";
-import { supabase } from "~/lib/supabase";
 import { usePageEditor } from "~/composables/usePageEditor";
-import { PAGE_STAGE, PAGE_FONTS, PAGE_FONT_URL, IMAGE_SHAPES, safeUrl } from "~/utils/page-defaults";
+import { useUndanganStore } from "~/stores/useUndanganStore";
+import PageStage from "~/components/themes/PageStage.vue";
+import MediaPicker from "~/components/editor/MediaPicker.vue";
+import {
+  PAGE_STAGE, PAGE_FONTS, PAGE_FONT_URL, IMAGE_SHAPES, ENTRANCES, LOOPS, BTN_ACTIONS, safeUrl, tokenKey, hasToken
+} from "~/utils/page-defaults";
 
 useHead({ link: [{ rel: "stylesheet", href: PAGE_FONT_URL }] });
+
+// Mode user (default): tema bawaan, user hanya mengganti DATA (teks yang terikat data, foto, link tombol).
+// Mode desainer (designer=true): kontrol lengkap untuk membuat/mengubah tema (tambah elemen, dekorasi, panel, animasi).
+const props = defineProps({ designer: { type: Boolean, default: false } });
+const store = useUndanganStore();
 
 const {
   pages, ensurePages, addPage, duplicatePage, removePage, renamePage, setPageBg,
   setPagePanel, setPageVisible, reorderPage,
-  addElement, addImage, updateElement, removeElement, moveElement
+  addElement, addImage, addButton, addLayer, updateElement, removeElement, moveElement
 } = usePageEditor();
 
 onMounted(() => {
@@ -31,18 +39,19 @@ watch(() => pages.value.length, () => {
 });
 const toggleOpen = (id) => { openId.value = openId.value === id ? null : id; };
 
-// ── skala kanvas ──
+// ── kanvas: sejajar baris halaman, tinggi mengikuti isi (minimal ukuran mobile default) ──
 const rootRef = ref(null);
 const { width: rootW } = useElementSize(rootRef);
-// Kanvas sejajar dengan baris halaman (kiri-kanan 12px) & tinggi TETAP berdasar lebar
-// (tidak bergantung tinggi layar, supaya tidak "goyang" saat address bar HP naik-turun).
-// Ubah PAGE_RATIO untuk atur tinggi (tinggi = lebar × rasio).
 const SIDE = 12;
-const PAGE_RATIO = 1.45;
-const stageW = computed(() => Math.max(0, rootW.value - SIDE * 2));
+const MAX_STAGE_W = 480; // sama dengan tampilan tamu: di layar lebar kanvas tidak melebar tanpa batas
+// responsif: lebar kanvas mengikuti lebar layar (dikurangi sisi), maks 480px, selalu di tengah
+const stageW = computed(() => Math.min(MAX_STAGE_W, Math.max(0, rootW.value - SIDE * 2)));
 const scale = computed(() => (stageW.value ? stageW.value / PAGE_STAGE.width : 1));
-const stageH = computed(() => (PAGE_STAGE.width * PAGE_RATIO));
-const stageHpx = computed(() => stageH.value * scale.value);
+// tinggi minimal logis sama persis dengan tampilan tamu (PAGE_STAGE.height) → posisi dekorasi konsisten
+const stageH = computed(() => PAGE_STAGE.height);
+const measuredH = ref(0);
+const stageHpx = computed(() => Math.max(stageH.value, measuredH.value) * scale.value);
+watch(openId, () => { measuredH.value = 0; });
 
 // ── drag & drop urutan halaman ──
 const dragFrom = ref(-1);
@@ -53,101 +62,128 @@ function onDrop(i) {
   dragFrom.value = -1; dragOver.value = -1;
 }
 
-// ── upload foto ke Supabase Storage (bucket yang sama dengan editor lain) ──
-const ALLOWED = { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp" };
-const MAX_MB = 5;
-const uploading = ref(false);
-const errMsg = ref("");
-async function uploadImage(file) {
-  errMsg.value = "";
-  if (!file) return "";
-  const ext = ALLOWED[file.type];
-  if (!ext) { errMsg.value = "Format tidak didukung — hanya PNG, JPG, WEBP."; return ""; }
-  if (file.size > MAX_MB * 1024 * 1024) { errMsg.value = `File terlalu besar — maks ${MAX_MB} MB.`; return ""; }
-  uploading.value = true;
-  try {
-    const name = `undangan/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
-    const { error } = await supabase.storage.from("foto-assets").upload(name, file, { upsert: false });
-    if (error) { errMsg.value = "Upload gagal, coba lagi."; return ""; }
-    return supabase.storage.from("foto-assets").getPublicUrl(name).data.publicUrl;
-  } catch {
-    errMsg.value = "Terjadi kesalahan saat upload.";
-    return "";
-  } finally {
-    uploading.value = false;
-  }
-}
-async function onBgFile(e) {
-  const f = e.target.files?.[0];
-  e.target.value = "";
-  const url = await uploadImage(f);
-  if (url) setPageBg(current.value, { image: url });
-}
-async function onImgFile(e) {
-  const f = e.target.files?.[0];
-  e.target.value = "";
-  const url = await uploadImage(f);
-  if (url) draft.src = url;
+// ── Media picker (satu-satunya jalan memilih foto) ──
+const pickerOpen = ref(false);
+const pickerTarget = ref(""); // bg | src | frame
+function pickMedia(target) { pickerTarget.value = target; pickerOpen.value = true; }
+function onPicked(url) {
+  if (pickerTarget.value === "bg") setPageBg(current.value, { image: url });
+  else if (pickerTarget.value === "src") draft.src = url;
+  else if (pickerTarget.value === "frame") draft.frameUrl = url;
 }
 
-// ── modal edit elemen (teks / foto) ──
+// ── modal edit elemen ──
 const modalOpen = ref(false);
+const editBound = ref(""); // nama field data yang diedit langsung (teks/label tunggal berisi 1 token)
+const editLocked = ref(false); // teks gabungan beberapa data → tidak diedit di sini
+const editBindImg = ref("");
+const editBindUrl = ref("");
 const editingId = ref(null);
-const editingType = ref("text");
+const editingType = ref("text"); // text | image | button | layer
 const draft = reactive({
   text: "", font: PAGE_FONTS[3].value, size: 16, color: "#000000", bold: false, italic: false, align: "center", mt: 0,
-  src: "", shape: "oval", w: 190, h: 250, frame: "ornate", frameUrl: ""
+  src: "", shape: "oval", w: 190, h: 250, frame: "ornate", frameUrl: "",
+  label: "", action: "next", url: "", bg: "#96483e",
+  lh: "left", lv: "top", x: 0, y: 0, lw: 50, rot: 0, flip: false, front: true, loop: "",
+  anim: "", delay: 0
 });
 
 function openEdit(id) {
   const el = page.value?.elements.find((e) => e.id === id);
   if (!el) return;
-  errMsg.value = "";
   editingId.value = id;
-  editingType.value = el.type === "image" ? "image" : "text";
+  editingType.value = el.type || "text";
+  editBound.value = ""; editLocked.value = false; editBindImg.value = ""; editBindUrl.value = "";
+  draft.mt = el.mt || 0;
+  draft.anim = el.anim || "";
+  draft.delay = el.delay || 0;
+  const boundKey = (txt) => { const k = tokenKey(txt); return !props.designer && k && k !== "nama_tamu" ? k : ""; };
   if (el.type === "image") {
-    Object.assign(draft, { src: el.src || "", shape: el.shape || "oval", w: el.w || 190, h: el.h || 250, frame: el.frame || "ornate", frameUrl: el.frameUrl || "", mt: el.mt || 0 });
-  } else {
+    editBindImg.value = el.bind || "";
+    Object.assign(draft, { src: el.bind ? String(store.undangan[el.bind] ?? "") : el.src || "", shape: el.shape || "oval", w: el.w || 190, h: el.h || 250, frame: el.frame || "ornate", frameUrl: el.frameUrl || "" });
+  } else if (el.type === "button") {
+    editBound.value = boundKey(el.label);
+    editBindUrl.value = el.bindUrl || "";
     Object.assign(draft, {
-      text: el.text, font: el.font, size: el.size, color: el.color,
-      bold: !!el.bold, italic: !!el.italic, align: el.align || "center", mt: el.mt || 0
+      label: editBound.value ? String(store.undangan[editBound.value] ?? "") : el.label,
+      action: el.action || "next", font: el.font, size: el.size, color: el.color, bg: el.bg,
+      url: el.bindUrl ? String(store.undangan[el.bindUrl] ?? "") : el.url || ""
+    });
+  } else if (el.type === "layer") {
+    Object.assign(draft, { src: el.src || "", lh: el.h || "left", lv: el.v || "top", x: el.x || 0, y: el.y || 0, lw: el.w || 50, rot: el.rot || 0, flip: !!el.flip, front: el.front !== false, loop: el.loop || "" });
+  } else {
+    editBound.value = boundKey(el.text);
+    editLocked.value = !props.designer && !editBound.value && hasToken(el.text);
+    Object.assign(draft, {
+      text: editBound.value ? String(store.undangan[editBound.value] ?? "") : el.text,
+      font: el.font, size: el.size, color: el.color, bold: !!el.bold, italic: !!el.italic, align: el.align || "center"
     });
   }
   modalOpen.value = true;
 }
-function onAddText() { const id = addElement(current.value); if (id) openEdit(id); }
-function onAddImage() { const id = addImage(current.value); if (id) openEdit(id); }
+const onAdd = (fn) => { const id = fn(current.value); if (id) openEdit(id); };
+
 const clamp = (v, a, b, d) => Math.min(b, Math.max(a, Number(v) || d));
 function save() {
-  const mt = clamp(draft.mt, 0, 200, 0);
-  if (editingType.value === "image") {
-    updateElement(current.value, editingId.value, {
-      src: safeUrl(draft.src), shape: draft.shape, w: clamp(draft.w, 60, 300, 190), h: clamp(draft.h, 60, 400, 250),
-      frame: draft.frame, frameUrl: safeUrl(draft.frameUrl), mt
-    });
-  } else {
-    updateElement(current.value, editingId.value, {
-      text: draft.text, font: draft.font, size: clamp(draft.size, 8, 120, 16), color: draft.color,
-      bold: draft.bold, italic: draft.italic, align: draft.align, mt
-    });
+  const t = editingType.value;
+  const D = store.undangan;
+  const goodUrl = (u) => (safeUrl(u) ? String(u).trim() : "");
+
+  // ── MODE USER: hanya data ──
+  if (!props.designer) {
+    if (t === "text") {
+      if (editBound.value) D[editBound.value] = draft.text;
+      else updateElement(current.value, editingId.value, { text: draft.text });
+    } else if (t === "image") {
+      if (editBindImg.value) D[editBindImg.value] = goodUrl(draft.src);
+      else updateElement(current.value, editingId.value, { src: goodUrl(draft.src) });
+    } else if (t === "button") {
+      const patch = {};
+      if (editBound.value) D[editBound.value] = draft.label; else patch.label = draft.label || "Tombol";
+      if (draft.action !== "next") { if (editBindUrl.value) D[editBindUrl.value] = draft.url; else patch.url = draft.url; }
+      if (Object.keys(patch).length) updateElement(current.value, editingId.value, patch);
+    }
+    modalOpen.value = false;
+    return;
   }
+
+  // ── MODE DESAINER ──
+  const common = { mt: clamp(draft.mt, 0, 300, 0), anim: draft.anim, delay: clamp(draft.delay, 0, 10, 0) };
+  let patch;
+  if (t === "image") {
+    if (editBindImg.value) D[editBindImg.value] = goodUrl(draft.src);
+    patch = { ...(editBindImg.value ? {} : { src: goodUrl(draft.src) }), shape: draft.shape, w: clamp(draft.w, 60, 300, 190), h: clamp(draft.h, 60, 400, 250), frame: draft.frame, frameUrl: goodUrl(draft.frameUrl), ...common };
+  } else if (t === "button") {
+    if (editBindUrl.value) D[editBindUrl.value] = draft.url;
+    patch = { label: draft.label || "Tombol", action: draft.action, ...(editBindUrl.value ? {} : { url: draft.url }), font: draft.font, size: clamp(draft.size, 10, 30, 14), color: draft.color, bg: draft.bg, ...common };
+  } else if (t === "layer") {
+    patch = {
+      src: goodUrl(draft.src), h: draft.lh, v: draft.lv, x: Number(draft.x) || 0, y: Number(draft.y) || 0, w: clamp(draft.lw, 5, 200, 50),
+      rot: clamp(draft.rot, -180, 180, 0) * 1, flip: draft.flip, loop: draft.loop, anim: draft.anim, delay: common.delay
+    };
+  } else {
+    patch = { text: draft.text, font: draft.font, size: clamp(draft.size, 8, 120, 16), color: draft.color, bold: draft.bold, italic: draft.italic, align: draft.align, ...common };
+  }
+  updateElement(current.value, editingId.value, patch);
   modalOpen.value = false;
 }
 function del() { removeElement(current.value, editingId.value); modalOpen.value = false; }
 function moveEl(dir) { moveElement(current.value, editingId.value, dir); }
+function onLayerMove({ id, x, y }) { updateElement(current.value, id, { x, y }); }
 
 const aligns = [
   { v: "left", icon: "i-lucide-align-left" },
   { v: "center", icon: "i-lucide-align-center" },
   { v: "right", icon: "i-lucide-align-right" }
 ];
+const modalTitle = computed(() => ({ text: "Edit Teks", image: "Ganti Foto", button: "Edit Tombol", layer: "Edit Dekorasi" }[editingType.value]));
 const modalUi = {
   content: "w-[calc(100vw-32px)] max-w-[450px] mx-auto my-auto max-h-[85vh] rounded-2xl !bg-white !text-slate-900 ring-1 ring-slate-200",
   title: "!text-[#1a2e45] dark:!text-[#1a2e45]"
 };
 
 // ── aksi halaman ──
-function onAdd() { openId.value = pages.value[addPage(current.value >= 0 ? current.value : null)]?.id ?? openId.value; }
+function onAddPage() { openId.value = pages.value[addPage(current.value >= 0 ? current.value : null)]?.id ?? openId.value; }
 function onDup() { openId.value = pages.value[duplicatePage(current.value)]?.id ?? openId.value; }
 function onDel() {
   if (pages.value.length <= 1) return;
@@ -171,7 +207,7 @@ function togglePanel() {
       @drop.prevent="onDrop(i)"
     >
       <!-- BARIS HALAMAN -->
-      <div class="pe-row" draggable="true" @dragstart="onDragStart(i, $event)" @dragend="dragFrom = -1; dragOver = -1">
+      <div class="pe-row" :draggable="designer" @dragstart="onDragStart(i, $event)" @dragend="dragFrom = -1; dragOver = -1">
         <span class="pe-handle" :class="{ off: p.visible === false }"><UIcon name="i-lucide-arrow-up-down" /></span>
         <span class="pe-rname">{{ p.name }}</span>
         <button
@@ -186,116 +222,199 @@ function togglePanel() {
 
       <!-- PANEL EDIT -->
       <div v-if="openId === p.id" class="pe-open">
-        <div class="pe-toolbar">
-          <button
-            type="button"
-            class="pe-ico"
-            :class="{ on: p.panel?.shape === 'arch' }"
-            title="Panel lengkung"
-            @click="togglePanel"
-          ><UIcon name="i-lucide-panel-top" /></button>
+        <div v-if="designer" class="pe-toolbar">
+          <button type="button" class="pe-ico" :class="{ on: p.panel?.shape === 'arch' }" title="Panel lengkung" @click="togglePanel">
+            <UIcon name="i-lucide-panel-top" />
+          </button>
           <input class="pe-name" :value="p.name" maxlength="30" placeholder="Nama halaman" @input="renamePage(i, $event.target.value)" />
-          <label class="pe-ico" :class="{ on: !!p.bg?.image }" title="Gambar latar">
-            <UIcon :name="uploading ? 'i-lucide-loader' : 'i-lucide-image'" />
-            <input type="file" accept="image/png,image/jpeg,image/webp" hidden @change="onBgFile" />
-          </label>
+          <button type="button" class="pe-ico" :class="{ on: !!p.bg?.image }" title="Gambar latar (dari Media)" @click="pickMedia('bg')">
+            <UIcon name="i-lucide-image" />
+          </button>
           <button type="button" class="pe-ico" title="Duplikat halaman" @click="onDup"><UIcon name="i-lucide-copy" /></button>
-          <button type="button" class="pe-ico danger" title="Hapus halaman" :disabled="pages.length <= 1" @click="onDel"><UIcon name="i-lucide-trash-2" /></button>
+          <button type="button" class="pe-ico" title="Hapus halaman" :disabled="pages.length <= 1" @click="onDel"><UIcon name="i-lucide-trash-2" /></button>
         </div>
 
         <div class="pe-stage-area">
           <div class="pe-stage-wrap" :style="{ width: stageW + 'px', height: stageHpx + 'px' }">
-            <PageStage :page="p" :scale="scale" :height="stageH" editable @edit="openEdit" />
+            <PageStage
+              
+              :page="p" :scale="scale" :height="stageH" :data="store.undangan" :designer="designer" editable
+              @edit="openEdit" @measure="measuredH = $event" @layer-move="onLayerMove"
+            />
           </div>
         </div>
 
-        <div class="pe-bar">
-          <button type="button" class="pe-btn" @click="onAddText"><UIcon name="i-lucide-type" /> Teks</button>
-          <button type="button" class="pe-btn" @click="onAddImage"><UIcon name="i-lucide-image-plus" /> Foto</button>
+        <div v-if="designer" class="pe-bar">
+          <button type="button" class="pe-btn" @click="onAdd(addElement)"><UIcon name="i-lucide-type" /> Teks</button>
+          <button type="button" class="pe-btn" @click="onAdd(addImage)"><UIcon name="i-lucide-image-plus" /> Foto</button>
+          <button type="button" class="pe-btn" @click="onAdd(addButton)"><UIcon name="i-lucide-mouse-pointer-click" /> Tombol</button>
+          <button type="button" class="pe-btn" @click="onAdd(addLayer)"><UIcon name="i-lucide-flower-2" /> Dekorasi</button>
+        </div>
+        <div v-if="designer" class="pe-bar pe-bar2">
           <label class="pe-clr" title="Warna latar">
             <UIcon name="i-lucide-paint-bucket" />
             <input type="color" :value="p.bg?.color || '#ffffff'" @input="setPageBg(i, { color: $event.target.value })" />
           </label>
-          <label v-if="p.panel?.shape === 'arch'" class="pe-clr" title="Warna panel">
-            <UIcon name="i-lucide-panel-top" />
-            <input type="color" :value="p.panel?.color || '#ffffff'" @input="setPagePanel(i, { color: $event.target.value })" />
-          </label>
+          <template v-if="p.panel?.shape === 'arch'">
+            <label class="pe-clr" title="Warna panel">
+              <UIcon name="i-lucide-panel-top" />
+              <input type="color" :value="p.panel?.color || '#ffffff'" @input="setPagePanel(i, { color: $event.target.value })" />
+            </label>
+            <label class="pe-clr" title="Transparansi panel">
+              <UIcon name="i-lucide-droplet" />
+              <input type="range" min="0" max="1" step="0.05" :value="p.panel?.alpha ?? 1" class="pe-range" @input="setPagePanel(i, { alpha: Number($event.target.value) })" />
+            </label>
+            <label class="pe-clr" title="Garis tepi panel">
+              <UIcon name="i-lucide-square-dashed" />
+              <input type="color" :value="p.panel?.border || '#96483e'" @input="setPagePanel(i, { border: $event.target.value })" />
+            </label>
+            <button v-if="p.panel?.border" type="button" class="pe-btn ghost" @click="setPagePanel(i, { border: '' })">Tanpa garis</button>
+          </template>
           <button v-if="p.bg?.image" type="button" class="pe-btn ghost" @click="setPageBg(i, { image: '' })"><UIcon name="i-lucide-x" /> Latar</button>
         </div>
-        <p v-if="errMsg && !modalOpen" class="pe-err">{{ errMsg }}</p>
       </div>
     </div>
 
-    <button type="button" class="pe-addpage" @click="onAdd"><UIcon name="i-lucide-plus" /> Tambah Halaman</button>
+    <button v-if="designer" type="button" class="pe-addpage" @click="onAddPage"><UIcon name="i-lucide-plus" /> Tambah Halaman</button>
 
-    <!-- MODAL -->
-    <UModal v-model:open="modalOpen" :title="editingType === 'image' ? 'Edit Foto' : 'Edit Text'" :ui="modalUi">
+    <MediaPicker v-model:open="pickerOpen" @select="onPicked" />
+
+    <!-- MODAL EDIT ELEMEN -->
+    <UModal v-model:open="modalOpen" :title="modalTitle" :ui="modalUi">
       <template #body>
-        <div v-if="editingType === 'text'" class="em-body">
-          <textarea v-model="draft.text" class="em-text" rows="5" placeholder="Ketik teks…" />
-          <div class="em-row">
-            <button type="button" class="em-tog" :class="{ on: draft.italic }" style="font-style: italic" @click="draft.italic = !draft.italic">I</button>
-            <button type="button" class="em-tog" :class="{ on: draft.bold }" style="font-weight: 700" @click="draft.bold = !draft.bold">B</button>
-            <button v-for="a in aligns" :key="a.v" type="button" class="em-tog" :class="{ on: draft.align === a.v }" @click="draft.align = a.v">
-              <UIcon :name="a.icon" />
-            </button>
-            <select v-model="draft.font" class="em-select">
-              <option v-for="f in PAGE_FONTS" :key="f.value" :value="f.value">{{ f.label }}</option>
-            </select>
-          </div>
-          <div class="em-row">
-            <label class="em-lbl">Warna Text <input v-model="draft.color" type="color" class="em-color" /></label>
-            <label class="em-lbl em-right">Ukuran <input v-model.number="draft.size" type="number" min="8" max="120" class="em-num" /> px</label>
-          </div>
-          <div class="em-row">
-            <label class="em-lbl">Jarak atas <input v-model.number="draft.mt" type="number" min="0" max="200" class="em-num" /> px</label>
-            <span class="em-right em-move">
-              <button type="button" class="em-tog" title="Naikkan" @click="moveEl(-1)"><UIcon name="i-lucide-arrow-up" /></button>
-              <button type="button" class="em-tog" title="Turunkan" @click="moveEl(1)"><UIcon name="i-lucide-arrow-down" /></button>
-            </span>
-          </div>
-        </div>
+        <div class="em-body">
+          <!-- MODE USER: hanya mengganti data -->
+          <template v-if="!designer">
+            <template v-if="editingType === 'text'">
+              <p v-if="editLocked" class="em-hint">Teks ini gabungan beberapa data (mis. nama &amp; tanggal). Ubah lewat form Data undangan.</p>
+              <textarea v-else v-model="draft.text" class="em-text" rows="5" placeholder="Ketik teks…" />
+              <p v-if="editBound" class="em-hint">Perubahan ini ikut memperbarui data undangan.</p>
+            </template>
+            <template v-else-if="editingType === 'image'">
+              <div class="em-row">
+                <button type="button" class="em-media" @click="pickMedia('src')"><UIcon name="i-lucide-images" /> {{ draft.src ? "Ganti Foto" : "Pilih dari Media" }}</button>
+                <img v-if="draft.src" :src="safeUrl(draft.src)" class="em-thumb" alt="" />
+                <button v-if="draft.src" type="button" class="em-tog" title="Hapus foto" @click="draft.src = ''"><UIcon name="i-lucide-x" /></button>
+              </div>
+            </template>
+            <template v-else-if="editingType === 'button'">
+              <input v-model="draft.label" class="em-input" placeholder="Teks tombol" maxlength="40" />
+              <input v-if="draft.action === 'link'" v-model="draft.url" type="url" class="em-input" placeholder="Link, mis. https://maps.app.goo.gl/…" />
+              <input v-if="draft.action === 'wa'" v-model="draft.url" type="tel" class="em-input" placeholder="Nomor WhatsApp, mis. 0812xxxx" />
+            </template>
+          </template>
 
-        <div v-else class="em-body">
-          <div class="em-row">
-            <label class="em-upload">
-              <UIcon :name="uploading ? 'i-lucide-loader' : 'i-lucide-upload'" /> {{ uploading ? "Mengunggah…" : "Upload Foto" }}
-              <input type="file" accept="image/png,image/jpeg,image/webp" hidden @change="onImgFile" />
+          <!-- MODE DESAINER -->
+          <template v-else>
+          <!-- TEKS -->
+          <template v-if="editingType === 'text'">
+            <textarea v-model="draft.text" class="em-text" rows="5" placeholder="Ketik teks…" />
+            <div class="em-row">
+              <button type="button" class="em-tog" :class="{ on: draft.italic }" style="font-style: italic" @click="draft.italic = !draft.italic">I</button>
+              <button type="button" class="em-tog" :class="{ on: draft.bold }" style="font-weight: 700" @click="draft.bold = !draft.bold">B</button>
+              <button v-for="a in aligns" :key="a.v" type="button" class="em-tog" :class="{ on: draft.align === a.v }" @click="draft.align = a.v"><UIcon :name="a.icon" /></button>
+              <select v-model="draft.font" class="em-select"><option v-for="f in PAGE_FONTS" :key="f.value" :value="f.value">{{ f.label }}</option></select>
+            </div>
+            <div class="em-row">
+              <label class="em-lbl">Warna Text <input v-model="draft.color" type="color" class="em-color" /></label>
+              <label class="em-lbl em-right">Ukuran <input v-model.number="draft.size" type="number" min="8" max="120" class="em-num" /> px</label>
+            </div>
+          </template>
+
+          <!-- FOTO -->
+          <template v-else-if="editingType === 'image'">
+            <div class="em-row">
+              <button type="button" class="em-media" @click="pickMedia('src')"><UIcon name="i-lucide-images" /> {{ draft.src ? "Ganti Foto" : "Pilih dari Media" }}</button>
+              <img v-if="draft.src" :src="safeUrl(draft.src)" class="em-thumb" alt="" />
+            </div>
+            <div class="em-row">
+              <label class="em-lbl">Bentuk
+                <select v-model="draft.shape" class="em-select"><option v-for="s in IMAGE_SHAPES" :key="s.value" :value="s.value">{{ s.label }}</option></select>
+              </label>
+              <label class="em-lbl em-right">Bingkai
+                <select v-model="draft.frame" class="em-select"><option value="ornate">Emas</option><option value="none">Tanpa</option></select>
+              </label>
+            </div>
+            <div class="em-row">
+              <label class="em-lbl">Lebar <input v-model.number="draft.w" type="number" min="60" max="300" class="em-num" /></label>
+              <label class="em-lbl em-right">Tinggi <input v-model.number="draft.h" type="number" min="60" max="400" class="em-num" :disabled="draft.shape === 'circle'" /></label>
+            </div>
+            <div class="em-row">
+              <button type="button" class="em-media" @click="pickMedia('frame')"><UIcon name="i-lucide-frame" /> {{ draft.frameUrl ? "Ganti Bingkai Ornamen" : "Bingkai Ornamen (Media)" }}</button>
+              <button v-if="draft.frameUrl" type="button" class="em-tog" title="Hapus bingkai ornamen" @click="draft.frameUrl = ''"><UIcon name="i-lucide-x" /></button>
+            </div>
+          </template>
+
+          <!-- TOMBOL -->
+          <template v-else-if="editingType === 'button'">
+            <input v-model="draft.label" class="em-input" placeholder="Teks tombol" maxlength="40" />
+            <select v-model="draft.action" class="em-select"><option v-for="a in BTN_ACTIONS" :key="a.value" :value="a.value">{{ a.label }}</option></select>
+            <input v-if="draft.action === 'link'" v-model="draft.url" type="url" class="em-input" placeholder="https://maps.app.goo.gl/…" />
+            <input v-if="draft.action === 'wa'" v-model="draft.url" type="tel" class="em-input" placeholder="Nomor WhatsApp, mis. 0812xxxx" />
+            <div class="em-row">
+              <label class="em-lbl">Warna tombol <input v-model="draft.bg" type="color" class="em-color" /></label>
+              <label class="em-lbl em-right">Warna teks <input v-model="draft.color" type="color" class="em-color" /></label>
+            </div>
+            <div class="em-row">
+              <select v-model="draft.font" class="em-select"><option v-for="f in PAGE_FONTS" :key="f.value" :value="f.value">{{ f.label }}</option></select>
+              <label class="em-lbl em-right">Ukuran <input v-model.number="draft.size" type="number" min="10" max="30" class="em-num" /></label>
+            </div>
+          </template>
+
+          <!-- DEKORASI -->
+          <template v-else>
+            <div class="em-row">
+              <button type="button" class="em-media" @click="pickMedia('src')"><UIcon name="i-lucide-images" /> {{ draft.src ? "Ganti Gambar" : "Pilih dari Media" }}</button>
+              <img v-if="draft.src" :src="safeUrl(draft.src)" class="em-thumb" alt="" />
+            </div>
+            <p class="em-hint">Dekorasi selalu berada di belakang teks, foto, dan tombol. Di desktop, dekorasi bisa digeser langsung di kanvas.</p>
+            <div class="em-row">
+              <label class="em-lbl">Dari
+                <select v-model="draft.lh" class="em-select"><option value="left">Kiri</option><option value="center">Tengah</option><option value="right">Kanan</option></select>
+              </label>
+              <label class="em-lbl em-right">
+                <select v-model="draft.lv" class="em-select"><option value="top">Atas</option><option value="bottom">Bawah</option></select>
+              </label>
+            </div>
+            <div class="em-row">
+              <label class="em-lbl">X % <input v-model.number="draft.x" type="number" step="1" class="em-num" /></label>
+              <label class="em-lbl em-right">Y % <input v-model.number="draft.y" type="number" step="1" class="em-num" /></label>
+            </div>
+            <div class="em-row">
+              <label class="em-lbl">Lebar % <input v-model.number="draft.lw" type="number" min="5" max="200" class="em-num" /></label>
+              <label class="em-lbl em-right">Putar ° <input v-model.number="draft.rot" type="number" min="-180" max="180" class="em-num" /></label>
+            </div>
+            <div class="em-row">
+              <button type="button" class="em-tog wide" :class="{ on: draft.flip }" @click="draft.flip = !draft.flip">Balik</button>
+            </div>
+            <label class="em-lbl">Gerak
+              <select v-model="draft.loop" class="em-select"><option v-for="l in LOOPS" :key="l.value" :value="l.value">{{ l.label }}</option></select>
             </label>
-            <input v-model="draft.src" type="url" class="em-input" placeholder="atau tempel URL foto (https://…)" />
-          </div>
-          <p v-if="errMsg" class="pe-err">{{ errMsg }}</p>
+          </template>
+
+          <!-- ANIMASI MASUK + URUTAN (semua elemen) -->
+          <div class="em-sep" />
           <div class="em-row">
-            <label class="em-lbl">Bentuk
-              <select v-model="draft.shape" class="em-select">
-                <option v-for="s in IMAGE_SHAPES" :key="s.value" :value="s.value">{{ s.label }}</option>
-              </select>
+            <label class="em-lbl">Animasi
+              <select v-model="draft.anim" class="em-select"><option v-for="a in ENTRANCES" :key="a.value" :value="a.value">{{ a.label }}</option></select>
             </label>
-            <label class="em-lbl em-right">Bingkai
-              <select v-model="draft.frame" class="em-select">
-                <option value="ornate">Emas</option>
-                <option value="none">Tanpa</option>
-              </select>
-            </label>
+            <label class="em-lbl em-right">Delay <input v-model.number="draft.delay" type="number" min="0" max="10" step="0.1" class="em-num" /> dtk</label>
           </div>
-          <div class="em-row">
-            <label class="em-lbl">Lebar <input v-model.number="draft.w" type="number" min="60" max="300" class="em-num" /></label>
-            <label class="em-lbl em-right">Tinggi <input v-model.number="draft.h" type="number" min="60" max="400" class="em-num" :disabled="draft.shape === 'circle'" /></label>
-          </div>
-          <input v-model="draft.frameUrl" type="url" class="em-input" placeholder="URL PNG bingkai ornamen (opsional, transparan)" />
-          <div class="em-row">
-            <label class="em-lbl">Jarak atas <input v-model.number="draft.mt" type="number" min="0" max="200" class="em-num" /> px</label>
+          <div v-if="editingType !== 'layer'" class="em-row">
+            <label class="em-lbl">Jarak atas <input v-model.number="draft.mt" type="number" min="0" max="300" class="em-num" /> px</label>
             <span class="em-right em-move">
               <button type="button" class="em-tog" title="Naikkan" @click="moveEl(-1)"><UIcon name="i-lucide-arrow-up" /></button>
               <button type="button" class="em-tog" title="Turunkan" @click="moveEl(1)"><UIcon name="i-lucide-arrow-down" /></button>
             </span>
           </div>
+          </template>
         </div>
       </template>
       <template #footer>
         <div class="em-foot">
-          <button type="button" class="em-del" @click="del">Delete Element</button>
-          <button type="button" class="em-save" @click="save">Simpan</button>
+          <button v-if="designer" type="button" class="em-del" @click="del">Delete Element</button>
+          <button v-else type="button" class="em-del" @click="modalOpen = false">{{ editLocked ? "Tutup" : "Batal" }}</button>
+          <button v-if="designer || !editLocked" type="button" class="em-save" @click="save">Simpan</button>
         </div>
       </template>
     </UModal>
@@ -306,7 +425,8 @@ function togglePanel() {
 .pe-root { display: flex; flex-direction: column; gap: 10px; margin: 4px 0 0; width: 100%; }
 .pe-item { border-radius: 12px; transition: box-shadow .15s; }
 .pe-item.over { box-shadow: 0 -3px 0 #0d9488; }
-.pe-row { margin: 0 12px; display: flex; align-items: center; gap: 12px; background: #fff; border-radius: 12px; padding: 10px 12px; box-shadow: 0 1px 6px rgba(26, 46, 69, .1); cursor: grab; }
+.pe-row { margin: 0 12px; display: flex; align-items: center; gap: 12px; background: #fff; border-radius: 12px; padding: 10px 12px; box-shadow: 0 1px 6px rgba(26, 46, 69, .1); }
+.pe-row[draggable="true"] { cursor: grab; }
 .pe-handle { color: #f97316; font-size: 20px; display: inline-flex; flex-shrink: 0; }
 .pe-handle.off { color: #64748b; }
 .pe-rname { flex: 1; min-width: 0; font-size: 14px; color: #1a2e45; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -321,29 +441,32 @@ function togglePanel() {
 .pe-toolbar { display: flex; align-items: center; gap: 8px; margin: 0 12px 12px; }
 .pe-ico { width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid #cbd5e1; border-radius: 10px; color: #1a2e45; background: #fff; flex-shrink: 0; cursor: pointer; font-size: 18px; }
 .pe-ico.on { background: #e6f4f1; border-color: #0d9488; color: #0d9488; }
-.pe-ico.danger { color: #1a2e45; }
 .pe-ico:disabled { opacity: .35; }
 .pe-name { flex: 1; min-width: 0; height: 38px; border: 1px solid #cbd5e1; border-radius: 10px; padding: 0 12px; font-size: 14px; color: #1a2e45; background: #fff; }
-.pe-stage-area { display: flex; justify-content: center; padding: 0 12px; }
+.pe-stage-area { display: flex; justify-content: center; padding: 0 12px; width: 100%; box-sizing: border-box; }
 .pe-stage-wrap { position: relative; overflow: hidden; border-radius: 22px; }
 .pe-bar { display: flex; align-items: center; gap: 8px; padding: 12px 12px 0; overflow-x: auto; }
-.pe-btn { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border-radius: 8px; background: #0d9488; color: #fff; font-size: 13px; font-weight: 600; flex-shrink: 0; }
+.pe-bar2 { padding-top: 8px; }
+.pe-btn { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border-radius: 8px; background: #0d9488; color: #fff; font-size: 13px; font-weight: 600; flex-shrink: 0; white-space: nowrap; }
 .pe-btn.ghost { background: #fff; color: #1a2e45; border: 1px solid #cbd5e1; }
 .pe-clr { display: inline-flex; align-items: center; gap: 4px; color: #1a2e45; flex-shrink: 0; }
-.pe-clr input { width: 32px; height: 32px; padding: 0; border: 1px solid #cbd5e1; border-radius: 8px; background: none; cursor: pointer; }
-.pe-open .pe-err { margin: 6px 12px 0; }
-.pe-err { color: #dc2626; font-size: 12px; margin-top: 6px; }
+.pe-clr input[type="color"] { width: 32px; height: 32px; padding: 0; border: 1px solid #cbd5e1; border-radius: 8px; background: none; cursor: pointer; }
+.pe-range { width: 84px; accent-color: #0d9488; }
 .pe-addpage { margin: 0 12px; display: flex; align-items: center; justify-content: center; gap: 6px; height: 42px; border: 1px dashed #94a3b8; border-radius: 12px; color: #1a2e45; font-size: 14px; background: #fff; }
 
 /* modal */
 .em-body { display: flex; flex-direction: column; gap: 14px; padding: 4px 2px; color: #1a2e45; }
 .em-text { width: 100%; border: 1px solid #cbd5e1; border-radius: 10px; padding: 10px 12px; font-size: 14px; line-height: 1.5; resize: vertical; color: #1a2e45; background: #fff; }
-.em-row { display: flex; align-items: center; gap: 8px; }
-.em-tog { width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid #cbd5e1; border-radius: 8px; color: #1a2e45; background: #fff; flex-shrink: 0; }
+.em-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.em-tog { min-width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid #cbd5e1; border-radius: 8px; color: #1a2e45; background: #fff; flex-shrink: 0; font-size: 13px; }
+.em-tog.wide { flex: 1; padding: 0 10px; }
 .em-tog.on { background: #0d9488; border-color: #0d9488; color: #fff; }
 .em-select { flex: 1; min-width: 0; height: 36px; border: 1px solid #cbd5e1; border-radius: 10px; padding: 0 10px; font-size: 14px; background: #fff; color: #1a2e45; }
-.em-input { flex: 1; min-width: 0; width: 100%; height: 36px; border: 1px solid #cbd5e1; border-radius: 10px; padding: 0 10px; font-size: 13px; background: #fff; color: #1a2e45; }
-.em-upload { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px; border-radius: 10px; background: #0d9488; color: #fff; font-size: 13px; font-weight: 600; cursor: pointer; flex-shrink: 0; }
+.em-input { width: 100%; height: 38px; border: 1px solid #cbd5e1; border-radius: 10px; padding: 0 12px; font-size: 14px; background: #fff; color: #1a2e45; }
+.em-media { display: inline-flex; align-items: center; gap: 6px; height: 38px; padding: 0 14px; border-radius: 10px; background: #0d9488; color: #fff; font-size: 13px; font-weight: 600; flex-shrink: 0; }
+.em-thumb { width: 44px; height: 44px; object-fit: contain; border-radius: 8px; border: 1px solid #cbd5e1; background: repeating-conic-gradient(#eef0f3 0% 25%, #fff 0% 50%) 50% / 10px 10px; }
+.em-hint { font-size: 12px; color: #64748b; margin: -6px 0 0; }
+.em-sep { height: 1px; background: #e2e8f0; }
 .em-lbl { display: flex; align-items: center; gap: 8px; font-size: 14px; }
 .em-right { margin-left: auto; }
 .em-color { width: 28px; height: 28px; padding: 0; border: 1px solid #cbd5e1; border-radius: 999px; background: none; cursor: pointer; }

@@ -3,18 +3,21 @@
 // -> otomatis ikut snapshot/autosave Supabase yang sudah ada (tanpa ubah snapshot).
 import { computed } from "vue";
 import { useUndanganStore } from "~/stores/useUndanganStore";
-import { buildDefaultPages, blankPage, newPageId, newTextElement, newImageElement } from "~/utils/page-defaults";
+import { PAGES_VERSION, buildDefaultPages, blankPage, newPageId, newTextElement, newImageElement, newButtonElement, newLayerElement } from "~/utils/page-defaults";
 
 export function usePageEditor() {
   const store = useUndanganStore();
 
   const pages = computed(() => store.sectionContents.pages?.items ?? []);
 
-  function ensurePages() {
-    const items = store.sectionContents.pages?.items;
-    // format lama / kosong → isi default
-    if (Array.isArray(items) && items.length && items.every((p) => Array.isArray(p.elements))) return;
-    store.sectionContents.pages = { items: buildDefaultPages(store.undangan) };
+  // upgrade=true (editor): data lama tanpa versi dibangun ulang dengan default tema terbaru.
+  // upgrade=false (tampilan tamu/preview): hanya mengisi kalau kosong — tidak pernah mengubah undangan yang sudah ada.
+  function ensurePages(upgrade = true) {
+    const cur = store.sectionContents.pages;
+    const items = cur?.items;
+    const valid = Array.isArray(items) && items.length && items.every((p) => Array.isArray(p.elements));
+    if (valid && (!upgrade || !PAGES_VERSION || cur.v === PAGES_VERSION)) return;
+    store.sectionContents.pages = { v: PAGES_VERSION, items: buildDefaultPages(store.undangan) };
   }
 
   function _items() {
@@ -94,6 +97,20 @@ export function usePageEditor() {
     p.elements.push(el);
     return el.id;
   }
+  function addButton(pageIndex) {
+    const p = _items()[pageIndex];
+    if (!p) return null;
+    const el = newButtonElement();
+    p.elements.push(el);
+    return el.id;
+  }
+  function addLayer(pageIndex) {
+    const p = _items()[pageIndex];
+    if (!p) return null;
+    const el = newLayerElement();
+    p.elements.push(el);
+    return el.id;
+  }
   function updateElement(pageIndex, id, patch) {
     const el = _items()[pageIndex]?.elements.find((e) => e.id === id);
     if (el) Object.assign(el, patch);
@@ -117,6 +134,6 @@ export function usePageEditor() {
     pages, ensurePages,
     addPage, duplicatePage, removePage, movePage, renamePage, setPageBg,
     setPagePanel, setPageVisible, reorderPage,
-    addElement, addImage, updateElement, removeElement, moveElement
+    addElement, addImage, addButton, addLayer, updateElement, removeElement, moveElement
   };
 }

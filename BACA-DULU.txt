@@ -1,24 +1,33 @@
-Update v4 — kanvas penuh lebar & tinggi ala mobile (tanpa space kiri-kanan)
+PLAYMOMENTS — TEMA 2 "SOFT ROMANCE" (v12)
 
-1. Ekstrak zip ini ke ROOT proyek (folder yang ada package.json dan folder app/). Timpa semua.
+PASANG
+1. Ekstrak zip ke ROOT proyek (folder yang ada package.json & app/), timpa semua.
 2. Hapus file sisa (kalau ada): app/utils/page-editor-extensions.js
-3. npm run dev, buka undangan yang temanya tema-2 (Sage Garden).
+3. npm run dev, buka undangan bertema tema-2.
 
-Yang baru:
-- Editor: daftar halaman (drag urutan, toggle tampil/sembunyi, tombol Edit) -> Edit membuka toolbar
-  [panel lengkung | nama halaman | gambar latar | duplikat | hapus] + kanvas halaman.
-- Panel lengkung (arch) di belakang konten, warna bisa diganti.
-- Elemen Foto: bentuk oval/lengkung/lingkaran/kotak, bingkai emas (CSS) atau PNG bingkai ornamen sendiri (URL), upload ke bucket foto-assets.
-- Font Marcellus ditambahkan, dan halaman default (Opening, Quotes, dst) mengikuti gaya screenshot.
-- Halaman yang di-toggle off tidak tampil ke tamu.
-Data lama tetap kompatibel (field baru opsional). Undangan yang sudah punya halaman default lama tidak otomatis berubah
-— hapus section "pages" / buat undangan baru untuk melihat default baru.
+KONSEP: tema = desain bawaan, user cuma ganti DATA
+- Semua isi halaman terhubung ke data undangan yang sudah ada lewat token, mis. {{nama1}}, {{nama2}}, {{quotesText}},
+  {{tanggalAkad}}, {{lokasiAkad}}, {{penutupDesc}}. Format cadangan: {{weddingSub|The Wedding Of}} (dipakai kalau datanya kosong).
+- Foto terikat ke field data (fotoCouple, fotoBride, fotoGroom). Tombol "Lihat Lokasi" terikat ke mapsAkad / mapsResepsi
+  (disembunyikan untuk tamu kalau link-nya kosong). Tombol "Open Invitation" membuka halaman berikutnya.
+- Di editor (mode user) user TIDAK bisa tambah teks/foto/dekorasi/tombol, tidak bisa hapus/geser. Yang bisa:
+  toggle tampil-sembunyi halaman; klik teks → ubah isi data-nya langsung; klik foto → Ganti Foto dari Media; klik tombol → ubah label/link.
+  Teks gabungan beberapa data (mis. "{{nama1}} & {{nama2}}") dikunci dan diubah lewat form Data biasa.
+- Foto selalu lewat Media (components/editor/MediaPicker.vue: upload → masuk Media → pilih).
 
-v4: kanvas halaman kini 100% lebar (tanpa margin/letterbox), tinggi menyesuaikan layar (editor maks 70% tinggi layar),
-panel lengkung full-width. Tamu: penuh layar, di desktop dibatasi 480px di tengah. Konten yang melebihi tinggi bisa di-scroll di dalam halaman.
+MODE DESAINER (untuk kamu bikin/ubah tema): <PageEditor designer /> di edit-undangan/[slug].vue
+  → muncul toolbar, tambah Teks/Foto/Tombol/Dekorasi, panel lengkung, animasi, geser dekorasi. Default (tanpa prop) = mode user.
 
-v5: sudut kanvas dibuat rounded (editor 22px; tamu di layar lebar 24px). Ubah di .pe-stage-wrap (PageEditor.vue) / .tp-wrap (TemaPage.vue).
+GAMBAR TEMA
+- app/config/soft-romance-assets.js: 2 latar + 15 dekorasi sudah terisi LINK asli (assets.satumomen.com).
+  Nanti kalau sudah upload sendiri ke public/themes/soft-romance/ (daftar nama file: _DAFTAR-FILE.txt),
+  kosongkan link-nya ("") → otomatis pakai file lokal. Kode lain tidak perlu diubah.
+- Posisi/animasi dekorasi: daftar SOFT_DECOR di app/utils/page-defaults.js.
 
-v6: tinggi kanvas editor = proporsi layar HP (tinggi/lebar viewport, batas 1.6–2.1), di PageEditor.vue (phoneRatio).
-
-v7: kanvas editor sejajar baris halaman (margin 12px), tinggi tetap = lebar x PAGE_RATIO (1.45) di PageEditor.vue; tidak lagi bergantung tinggi layar (anti goyang).
+CATATAN
+- PAGES_VERSION (page-defaults.js) = 3: editor membangun ulang halaman default SEKALI untuk data lama yang versinya lebih rendah
+  (edit manual di data lama hilang). Set 0 untuk mematikan. Tampilan tamu/preview tidak pernah mengubah undangan yang sudah ada,
+  hanya mengisi default kalau kosong.
+- Nama field data yang dipakai (nama1, nama2, quotesText, quotesSource, brideFull, groomFull, brideOrangTua, groomOrangTua,
+  tanggalAkad, waktuAkad, lokasiAkad, alamatAkad, mapsAkad, ...Resepsi, penutupDesc, penutupHormat, penutupAmpersand,
+  weddingSub, weddingAmpersand, kepadaYth, openingBtnText, fotoCouple/Bride/Groom) diambil dari form editor kamu.

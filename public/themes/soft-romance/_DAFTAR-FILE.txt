@@ -1,0 +1,28 @@
+FOLDER ASET DESAIN — TEMA SOFT ROMANCE
+Taruh file di folder ini (public/themes/soft-romance/). Boleh upload pelan-pelan:
+file yang belum ada otomatis tidak tampil (tidak error). Nama file harus PERSIS sama.
+Format: PNG transparan (WEBP juga boleh, tapi ubah ekstensinya di SOFT_DECOR di app/utils/page-defaults.js).
+
+LATAR (2)
+  bg-cover.png      latar halaman Opening      (asli: bg-section-83502801766073768.png)
+  bg-page.png       latar halaman lainnya      (asli: secondary_image-7505801766081558.png)
+
+DEKORASI (15) — dipasang otomatis di semua halaman
+  corner-tl-big.png     bunga pojok kiri atas, besar     (asli: 750580-gallery-okPq95XW5k.png)
+  corner-tl-small.png   bunga pojok kiri atas, kecil     (asli: 750580-gallery-qRfnG4M1ws.png)
+  corner-tr-big.png     bunga pojok kanan atas, besar    (asli: 750580-gallery-66ogXL8ofr.png)
+  corner-tr-small.png   bunga pojok kanan atas, kecil    (asli: 750580-gallery-A7lX6Mj5zV.png)
+  center-flower.png     bunga tengah (agak di bawah)     (asli: 750580-gallery-QARVTxwzfR.png)
+  side-l-mid.png        bunga sisi kiri tengah-bawah     (asli: 750580-gallery-T5f7FLC8fX.png)
+  side-r-mid.png        bunga sisi kanan tengah-bawah    (asli: 750580-gallery-p8VH16HJpJ.png)
+  flyer.png             objek yang terbang melintas      (asli: 750580-gallery-CtpUDPJOm0.png)
+  bottom-l-2.png        bunga bawah kiri, lapis 2        (asli: 750580-gallery-HRtX4G2Rsx.png)
+  bottom-r-2.png        bunga bawah kanan, lapis 2       (asli: 750580-gallery-7Y0jt8xlfR.png)
+  bottom-l-1.png        bunga bawah kiri, lapis 1        (asli: 750580-gallery-j3BtnzPh5N.png)
+  bottom-r-1.png        bunga bawah kanan, lapis 1       (asli: 750580-gallery-feajOrXbgn.png)
+  bottom-l-3.png        bunga bawah kiri-dalam           (asli: 750580-gallery-bWLulsg5Zl.png)
+  bottom-r-3.png        bunga bawah kanan-dalam          (asli: 750580-gallery-fVx0WKhm6L.png)
+  bottom-center.png     bunga bawah tengah               (asli: 750580-gallery-UDnZTfy4IX.png)
+
+Posisi, ukuran, dan animasi tiap dekorasi diatur di SOFT_DECOR (app/utils/page-defaults.js)
+dan bisa diubah per halaman lewat tombol Edit -> klik dekorasi di editor.
